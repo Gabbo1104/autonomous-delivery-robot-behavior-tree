@@ -10,6 +10,43 @@ Esempi:
     uv run main.py --mostra-albero
     uv run tui.py              # stessa simulazione, animata nel terminale
 """
+# NOTE: the docstring above stays in Italian on purpose: it is passed to argparse
+# (description=__doc__) and is what users see with --help, and the whole user
+# interface of this project is in Italian.
+#
+# Entry point of the project: builds the behaviour tree and runs the simulation
+# as plain text (one log line per event). tui.py reuses simula(),
+# opzioni_scenario(), crea_scenario() and riepilogo() from here to run the very
+# same simulation with an animated terminal view.
+#
+# Project layout
+# --------------
+#   main.py         this file: tree assembly, simulation loop, command line
+#   tui.py          animated terminal view (rich)
+#   mondo.py        simulated world: robot state, battery, doors, obstacles, orders
+#   mappa.py        floor map: graph (nodes/edges/doors) + character grid with walls
+#   percorso.py     generic shortest-path functions (Dijkstra) on the graph
+#   rami/           one module per branch of the behaviour tree (see rami/__init__.py)
+#   tests/          pytest suite: `uv run pytest`
+#
+# How one simulation step works
+# -----------------------------
+# 1. simula() calls albero.tick(): py_trees walks the tree from the root.
+# 2. Condition leaves query the world (mondo.batteria_ok(), mondo.strada_libera(), ...);
+#    action leaves change it (mondo.avanza(), mondo.spingi(), ...), each doing at most
+#    one unit of work (one edge, one door, one charging step).
+# 3. mondo.tick is incremented and the loop repeats until every order is closed, the
+#    tick limit is reached, or the battery is flat away from the charger.
+#
+# Italian -> English glossary (identifiers are in Italian)
+# --------------------------------------------------------
+#   albero = tree, radice = root, ramo/rami = branch(es), nodo = node, arco = edge,
+#   mondo = world, mappa = map, griglia = grid, cella/casella = cell,
+#   percorso = path, ordine/ordini = order(s), ritiro = pickup, consegna = delivery,
+#   presa = picking up, posa = putting down, chiusura = closing,
+#   batteria = battery, caricabatterie = charger, porta = door, ostacolo = obstacle,
+#   scale = stairs, partenza = start, seed = random seed, simula = simulate,
+#   riepilogo = summary, vista = view, stato = state/status, esito = outcome.
 import argparse
 import random
 
@@ -26,22 +63,40 @@ from rami.ritiro import crea_ritiro
 
 
 def crea_albero(mondo):
+    """Assemble the full behaviour tree for ``mondo`` and wrap it in a BehaviourTree.
+
+    The root is a reactive Sequence ("->" in the drawing, memory=False): on every
+    tick it re-evaluates its children from the first one, so the battery check
+    always runs first and can interrupt a delivery at any moment. The children
+    are the seven branches of the drawing, left to right. To change the robot's
+    behaviour, edit or add branches in rami/ and adjust this list.
+    """
     radice = py_trees.composites.Sequence("Root", memory=False, children=[
-        crea_batteria(mondo),
-        crea_ordini(mondo),
-        crea_ritiro(mondo),
-        crea_presa(mondo),
-        crea_consegna(mondo),
-        crea_posa(mondo),
-        crea_chiusura(mondo),
+        crea_batteria(mondo),     # enough charge? otherwise go and recharge
+        crea_ordini(mondo),       # is there an order? otherwise wait
+        crea_ritiro(mondo),       # reach the pickup point
+        crea_presa(mondo),        # pick up the item
+        crea_consegna(mondo),     # reach the delivery point
+        crea_posa(mondo),         # put the item down
+        crea_chiusura(mondo),     # close the order
     ])
     return py_trees.trees.BehaviourTree(radice)
 
 
 def simula(mondo, max_tick=5000, mostra_stato=False, dopo_tick=None):
-    """dopo_tick(albero), se dato, viene chiamata dopo ogni tick (es. per animare)."""
+    """Run the simulation on ``mondo`` until it ends; return the BehaviourTree.
+
+    Stops when all orders are closed, after ``max_tick`` ticks, or when the
+    battery is at 0% and the robot is not on the charger (it cannot move any
+    more). A robot that reaches the charger with exactly 0% may still recharge.
+
+    ``mostra_stato`` prints the visited part of the tree with each node's status
+    after every tick (handy for debugging the tree logic).
+    ``dopo_tick(albero)``, if given, is called after every tick; tui.py uses it
+    to animate the move that just happened before the next tick starts.
+    """
     albero = crea_albero(mondo)
-    albero.setup()
+    albero.setup()   # py_trees: lets behaviours initialise themselves (no-op for ours)
     while not mondo.finito() and mondo.tick < max_tick and (mondo.batteria > 0 or mondo.al_caricabatterie()):
         albero.tick()
         if mostra_stato:
@@ -53,6 +108,16 @@ def simula(mondo, max_tick=5000, mostra_stato=False, dopo_tick=None):
 
 
 def opzioni_scenario(ap):
+    """Add the command-line options shared by main.py and tui.py to parser ``ap``.
+
+    --ordini     number of orders (default 1)
+    --ostacoli   number of hidden obstacles placed in the corridors
+    --seed       random seed; omit it for a random scenario (the seed is printed
+                 so that an interesting run can be replayed exactly)
+    --batteria   initial charge in %; omit it for randint(1, 100)
+    --max-tick   safety limit on the number of ticks
+    Help texts are in Italian like the rest of the user interface.
+    """
     ap.add_argument("--ordini", type=int, default=1)
     ap.add_argument("--ostacoli", type=int, default=2, help="ostacoli nascosti nel corridoio")
     ap.add_argument("--seed", type=int, help="default: casuale (viene stampato)")
@@ -61,17 +126,25 @@ def opzioni_scenario(ap):
 
 
 def crea_scenario(args, verboso=False):
-    """Mondo con partenza, ordini, ostacoli e batteria casuali (riproducibili col seed)."""
+    """Create the world from the parsed options: random start, orders, obstacles, battery.
+
+    Everything random is derived from a single seed, so the same ``--seed``
+    reproduces the same run. Returns ``(mondo, header)`` where ``header`` is a
+    one-line description (seed, start node, battery) to show to the user.
+    ``verboso=True`` makes the world print every event as it happens (main.py);
+    tui.py passes False and shows events in its own panel.
+    """
     seed = args.seed if args.seed is not None else random.randrange(1_000_000)
     partenza, batteria = genera_partenza(seed)
     if args.batteria is not None:
-        batteria = args.batteria
+        batteria = args.batteria   # explicit --batteria overrides the random value
     mondo = Mondo(genera_ordini(args.ordini, seed), genera_ostacoli(args.ostacoli, seed),
                   batteria=batteria, posizione=partenza, verboso=verboso)
     return mondo, f"seed {seed}: partenza {partenza}, batteria {batteria:.0f}%"
 
 
 def riepilogo(mondo, ordini):
+    """One-line summary of how the simulation ended (in Italian, shown to the user)."""
     esito = ("tutti gli ordini completati" if mondo.finito()
              else "robot fermo: batteria scarica" if mondo.batteria <= 0 else "limite di tick raggiunto")
     return (f"{esito}: {len(mondo.completati)}/{ordini} ordini, {mondo.tick} tick, "
@@ -79,6 +152,7 @@ def riepilogo(mondo, ordini):
 
 
 def main():
+    """Command-line entry point: parse options, build the scenario, run it as text."""
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     opzioni_scenario(ap)
     ap.add_argument("--mostra-albero", action="store_true", help="stampa l'albero e esce")
@@ -87,6 +161,7 @@ def main():
 
     mondo, intestazione = crea_scenario(args, verboso=True)
     if args.mostra_albero:
+        # Just print the structure of the tree and exit, without simulating.
         print(py_trees.display.unicode_tree(crea_albero(mondo).root))
         return
     print(intestazione)
