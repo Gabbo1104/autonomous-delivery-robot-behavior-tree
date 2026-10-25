@@ -21,10 +21,11 @@ class Ordine:
 
 
 def genera_ordini(n, seed=None):
+    """Ordini con punto di ritiro e di consegna casuali (diversi) su tutta la mappa."""
     rng = random.Random(seed)
     ordini, arrivo = [], 0
     for i in range(n):
-        ritiro, consegna = rng.sample(mappa.STANZE, 2)
+        ritiro, consegna = rng.sample(list(mappa.NODI), 2)
         ordini.append(Ordine(i + 1, f"{OGGETTI[i % len(OGGETTI)]} #{i + 1}", ritiro, consegna, arrivo))
         arrivo += rng.randint(0, 30)
     return ordini
@@ -45,6 +46,12 @@ def genera_ostacoli(n, seed=None):
                for nodo in mappa.NODI):
             scelti = prova
     return scelti
+
+
+def genera_partenza(seed=None):
+    """Punto di partenza e carica iniziale (randint 1-100) casuali."""
+    rng = random.Random(seed)
+    return rng.choice(list(mappa.NODI)), rng.randint(1, 100)
 
 
 def arco(a, b):

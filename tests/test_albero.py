@@ -85,3 +85,30 @@ def test_non_resta_mai_senza_batteria():
         m = Mondo(genera_ordini(10, seed), genera_ostacoli(seed % 6, seed), batteria=25)
         simula(m, max_tick=8000)
         assert m.finito() and m.batteria > 0, seed
+
+
+def test_arriva_al_caricabatterie_a_zero_e_ricarica():
+    m = Mondo([Ordine(1, "cavo", "r101", "r103")], batteria=0, posizione="caricabatterie")
+    simula(m, max_tick=500)
+    assert m.finito()
+
+
+def test_partenza_e_ordini_casuali_su_tutta_la_mappa():
+    from mondo import genera_partenza
+    partenze = {genera_partenza(s)[0] for s in range(300)}
+    batterie = [genera_partenza(s)[1] for s in range(300)]
+    luoghi = {n for o in genera_ordini(300, seed=1) for n in (o.ritiro, o.consegna)}
+    assert len(partenze) > 30 and partenze <= set(mappa.NODI)
+    assert 1 <= min(batterie) and max(batterie) <= 100
+    assert any(n.startswith("c_") for n in luoghi) and luoghi <= set(mappa.NODI)
+    assert all(o.ritiro != o.consegna for o in genera_ordini(300, seed=1))
+    assert genera_partenza(5) == genera_partenza(5)
+
+
+def test_scenari_casuali_con_batteria_sufficiente_vanno_a_buon_fine():
+    from mondo import genera_partenza
+    for seed in range(60):
+        pos, _ = genera_partenza(seed)
+        m = Mondo(genera_ordini(1, seed), genera_ostacoli(2, seed), batteria=60, posizione=pos)
+        simula(m, max_tick=3000)
+        assert m.finito(), seed
