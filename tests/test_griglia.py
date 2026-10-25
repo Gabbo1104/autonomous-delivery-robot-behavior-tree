@@ -43,12 +43,12 @@ def test_stanze_chiuse_se_le_porte_sono_chiuse():
     """With all doors closed, no room can reach the corridor, while every corridor node can."""
     corridoio = mappa.CELLE["c_103"]
     for nodo, cella in mappa.CELLE.items():
-        stanza = not nodo.startswith("c_") and nodo != "caricabatterie"
+        stanza = not nodo.startswith("c_") and nodo != "charger"
         assert (mappa.percorso_griglia(cella, corridoio) is None) == stanza, nodo
 
 
 def test_scale_invalicabili():
     """The stairs are stairs cells and cannot be entered from the corridor."""
-    sotto, sopra = (15, 25), mappa.CELLE["c_scale"]
+    sotto, sopra = (15, 25), mappa.CELLE["c_stairs"]
     assert mappa.GRIGLIA[25][15] == mappa.SCALINI
     assert mappa.percorso_griglia(sopra, sotto) is None

@@ -4,9 +4,9 @@ In the hand-drawn tree, circles marked "C" are *conditions* and ovals are
 *actions*. Here both are thin wrappers around a plain Python callable, so each
 branch module can be written declaratively, e.g.::
 
-    selettore("Ordine",
-              Condizione("ho un ordine?", lambda: mondo.ordine is not None),
-              Azione("attendi ordine", lambda: ...))
+    selettore("Order",
+              Condizione("do I have an order?", lambda: mondo.ordine is not None),
+              Azione("wait for an order", lambda: ...))
 
 py_trees refresher (version 2.x):
 * Every node returns a Status when ticked: SUCCESS, FAILURE or RUNNING.

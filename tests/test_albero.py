@@ -25,9 +25,9 @@ def test_spinge_entrando_e_usa_la_chiave_dove_dovrebbe_tirare():
     assert m.finito()
     log = "\n".join(m.log)
     # the office door swings inwards: pushed when entering; when leaving it would need pulling, so key
-    assert "spinge la porta c_sud_ovest|main_office" in log
-    assert "usa la chiave sulla porta main_office|c_sud_ovest" in log
-    assert "spinge la porta c_101|r101" in log
+    assert "pushes the door c_south_west|main_office" in log
+    assert "uses the key on the door main_office|c_south_west" in log
+    assert "pushes the door c_101|r101" in log
 
 
 def test_porta_del_lab_d_si_apre_verso_il_corridoio():
@@ -44,28 +44,28 @@ def test_batteria_bassa_va_in_carica_fino_al_100():
     m = Mondo([Ordine(1, "pacco", "r103", "r105")], batteria=15)
     simula(m, max_tick=400)
     log = "\n".join(m.log)
-    assert "ricarica completata (100%)" in log
+    assert "charging complete (100%)" in log
     # charging happens before the order is even taken
-    assert log.index("ricarica completata") < log.index("nuovo ordine 1")
+    assert log.index("charging complete") < log.index("new order 1")
     assert m.finito()
 
 
 def test_ostacolo_scoperto_e_aggirato():
-    # from c_103 to main_office the direct route goes through c_101|c_scale
+    # from c_103 to main_office the direct route goes through c_101|c_stairs
     """A hidden obstacle on the planned route is discovered, remembered and never crossed."""
-    m = Mondo([Ordine(1, "cavo", "c_103", "main_office")], ostacoli=[("c_101", "c_scale")])
+    m = Mondo([Ordine(1, "cavo", "c_103", "main_office")], ostacoli=[("c_101", "c_stairs")])
     simula(m, max_tick=600)
     assert m.finito()
-    assert arco("c_101", "c_scale") in m.bloccati_noti
-    assert not any("c_101 -> c_scale" in r for r in m.log)
+    assert arco("c_101", "c_stairs") in m.bloccati_noti
+    assert not any("c_101 -> c_stairs" in r for r in m.log)
 
 
 def test_si_allontana_dalle_scale():
     """Starting next to the stairs, the 'allontanati' action moves the robot away."""
-    m = Mondo([Ordine(1, "libro", "c_103", "r131")], posizione="c_scale")
+    m = Mondo([Ordine(1, "libro", "c_103", "r131")], posizione="c_stairs")
     simula(m, max_tick=600)
     assert m.finito()
-    assert "mi allontano" in "\n".join(m.log)
+    assert "moving away" in "\n".join(m.log)
 
 
 def test_attende_ordini_che_arrivano_dopo():
@@ -82,7 +82,7 @@ def test_simulazione_completa_con_ostacoli_e_ricariche():
     simula(m, max_tick=8000)
     assert m.finito() and len(m.completati) == 12
     assert m.batteria > 0
-    assert any("ricarica completata" in r for r in m.log)
+    assert any("charging complete" in r for r in m.log)
     # no item lost: every one lies at its delivery node
     for o in m.completati:
         assert m.oggetti[o.oggetto] == o.consegna
@@ -117,7 +117,7 @@ def test_non_resta_mai_senza_batteria():
 
 def test_arriva_al_caricabatterie_a_zero_e_ricarica():
     """A robot standing on the charger with 0% can still recharge and finish (the loop must not stop)."""
-    m = Mondo([Ordine(1, "cavo", "r101", "r103")], batteria=0, posizione="caricabatterie")
+    m = Mondo([Ordine(1, "cavo", "r101", "r103")], batteria=0, posizione="charger")
     simula(m, max_tick=500)
     assert m.finito()
 

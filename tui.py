@@ -1,13 +1,12 @@
-"""Simulazione animata nel terminale: mappa, robot che si muove casella per casella,
-porte che si aprono e stato del behavior tree.
+"""Animated simulation in the terminal: map, robot moving cell by cell,
+doors opening and status of the behavior tree.
 
-Esempi:
+Examples:
     uv run tui.py
     uv run tui.py --seed 42 --velocita 25
     uv run tui.py --batteria 10 --ostacoli 4
 """
-# NOTE: the docstring above stays in Italian on purpose: it is the --help text
-# (description=__doc__) and the user interface of the project is in Italian.
+# NOTE: the docstring above is the --help text (description=__doc__).
 #
 # Animated terminal view of the simulation, built with the `rich` library.
 #
@@ -66,9 +65,9 @@ STILE = {
     "robot": "bold white on blue", "robot_carico": "bold white on magenta",
 }
 # Legend shown in the status panel: (symbol, description, key in STILE).
-LEGENDA = [("@", "robot", "robot"), ("A", "ritiro", "ritiro"), ("B", "consegna", "consegna"),
-           ("+", "carica", "carica"), ("▒", "porta chiusa", "porta_chiusa"),
-           ("░", "porta aperta", "porta_aperta"), ("X", "ostacolo", "ostacolo")]
+LEGENDA = [("@", "robot", "robot"), ("A", "pick-up", "ritiro"), ("B", "delivery", "consegna"),
+           ("+", "charger", "carica"), ("▒", "closed door", "porta_chiusa"),
+           ("░", "open door", "porta_aperta"), ("X", "obstacle", "ostacolo")]
 
 
 LARGHEZZA_MINIMA = mappa.LARGHEZZA + 2   # map + panel border (one column per side)
@@ -98,7 +97,7 @@ class Vista:
         self.mondo = mondo
         self.affiancati = affiancati   # status panel beside the map instead of below it
         self.compatta = compatta       # short terminal: essential status in the map's frame
-        self.intestazione = intestazione   # "seed ...: partenza ..., batteria ...%"
+        self.intestazione = intestazione   # "seed ...: start ..., battery ...%"
         self.ordini = ordini               # total number of orders (for "n/total completed")
         self.robot = mappa.CELLE[mondo.posizione]
         self.porta_in_transito = None
@@ -124,7 +123,7 @@ class Vista:
         for e, (c, r) in mappa.CELLE_PORTE.items():
             aperta = e in m.porte_aperte or (c, r) == self.porta_in_transito
             g[r][c] = ("░", STILE["porta_aperta"]) if aperta else ("▒", STILE["porta_chiusa"])
-        c, r = mappa.CELLE["caricabatterie"]
+        c, r = mappa.CELLE["charger"]
         g[r][c] = ("+", STILE["carica"])
         # Obstacles: faint "x" while still unknown to the robot, red "X" once discovered.
         for e, (c, r) in self.ostacoli.items():
@@ -152,22 +151,22 @@ class Vista:
         if self.compatta:
             m = self.mondo
             # Title: tick, battery, current order and carried item.
-            titolo = (f"t{m.tick} · batteria {m.batteria:.0f}%{' ⚡' if m.in_carica else ''} · "
-                      + (f"{m.ordine.ritiro}→{m.ordine.consegna}" if m.ordine else "nessun ordine")
-                      + (f" · in mano {m.oggetto_in_mano}" if m.oggetto_in_mano else ""))
+            titolo = (f"t{m.tick} · battery {m.batteria:.0f}%{' ⚡' if m.in_carica else ''} · "
+                      + (f"{m.ordine.ritiro}→{m.ordine.consegna}" if m.ordine else "no order")
+                      + (f" · holding {m.oggetto_in_mano}" if m.oggetto_in_mano else ""))
             # Subtitle: active tree leaf + latest log event (without its "[tNNNN]" prefix),
             # cut to fit inside the frame.
             evento = m.log[-1].split("] ", 1)[1] if m.log else self.intestazione
             sottotitolo = f"{self._ramo_attivo().split(' › ')[-1]} · {evento}"
             return Panel(t, title=titolo, subtitle=sottotitolo[:LARGHEZZA_MINIMA - 6], expand=False, padding=0)
-        return Panel(t, title="Piano del laboratorio", subtitle=self.intestazione, expand=False, padding=0)
+        return Panel(t, title="Laboratory floor", subtitle=self.intestazione, expand=False, padding=0)
 
     def _ramo_attivo(self):
         """Path in the tree from the root's child to the node that ended the last tick.
 
         py_trees' ``tip()`` returns the deepest node that ran in the last tick
-        (e.g. "vai avanti"). Walking ``parent`` links back up gives something
-        like "Raggiungi il punto di ritiro › Verso il ritiro › vai avanti".
+        (e.g. "move forward"). Walking ``parent`` links back up gives something
+        like "Reach the pick-up point › To the pick-up point › move forward".
         The root itself ("Root") is left out to save space.
         """
         if self.albero is None:
@@ -188,15 +187,15 @@ class Vista:
         pieni = round(m.batteria / 5)
         colore = "green" if m.batteria > 50 else "yellow" if m.batteria > 20 else "red"
         barra = Text("█" * pieni, colore) + Text("░" * (20 - pieni), "grey37")
-        barra.append(f" {m.batteria:3.0f}%" + ("  ⚡ in carica" if m.in_carica else ""))
+        barra.append(f" {m.batteria:3.0f}%" + ("  ⚡ charging" if m.in_carica else ""))
         o = m.ordine
         tab.add_row("tick", str(m.tick))
-        tab.add_row("batteria", barra)
-        tab.add_row("ordine", f"{o.oggetto}: {o.ritiro} → {o.consegna}" if o else
-                    f"nessuno ({len(m.completati)}/{self.ordini} completati)")
-        tab.add_row("in mano", m.oggetto_in_mano or "-")
-        tab.add_row("nodo", m.posizione)
-        tab.add_row("albero", Text(self._ramo_attivo(), "cyan"))
+        tab.add_row("battery", barra)
+        tab.add_row("order", f"{o.oggetto}: {o.ritiro} → {o.consegna}" if o else
+                    f"none ({len(m.completati)}/{self.ordini} completed)")
+        tab.add_row("holding", m.oggetto_in_mano or "-")
+        tab.add_row("node", m.posizione)
+        tab.add_row("tree", Text(self._ramo_attivo(), "cyan"))
         legenda = Text()
         for simbolo, nome, stile in LEGENDA:
             legenda.append(f" {simbolo} ", STILE[stile])
@@ -206,7 +205,7 @@ class Vista:
         righe_eventi = 14 if self.affiancati else 4
         eventi = Text("\n".join(r.split("] ", 1)[1] for r in m.log[-righe_eventi:]), "grey70")
         larghezza = 52 if self.affiancati else LARGHEZZA_MINIMA
-        return Panel(Group(tab, Text(), eventi, Text(), legenda), title="Stato", width=larghezza)
+        return Panel(Group(tab, Text(), eventi, Text(), legenda), title="Status", width=larghezza)
 
     def disegna(self):
         """Whole frame for the current layout (compact, side by side or stacked)."""
@@ -250,15 +249,15 @@ def main():
     """Command-line entry point: parse options, pick a layout, run the animated simulation."""
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     opzioni_scenario(ap)
-    ap.add_argument("--velocita", type=float, default=12, help="caselle al secondo (default 12)")
+    ap.add_argument("--velocita", type=float, default=12, help="cells per second (default 12)")
     args = ap.parse_args()
 
     mondo, intestazione = crea_scenario(args)
     console = Console()
     if console.width < LARGHEZZA_MINIMA:
-        console.print(f"[bold yellow]Il terminale è largo {console.width} colonne, la mappa ne richiede "
-                      f"{LARGHEZZA_MINIMA}: allarga la finestra o rimpicciolisci il carattere, "
-                      f"altrimenti il lato est viene tagliato.[/]")
+        console.print(f"[bold yellow]The terminal is {console.width} columns wide, the map needs "
+                      f"{LARGHEZZA_MINIMA}: widen the window or shrink the font, "
+                      f"otherwise the east side is cut off.[/]")
         time.sleep(3)   # leave time to read the warning before the animation starts
     # Side by side needs the map plus a 52-column status panel and a 1-column gap;
     # otherwise use the stacked layout if there are enough rows, else compact.
@@ -274,7 +273,7 @@ def main():
             live.update(vista.disegna(), refresh=True)
     except KeyboardInterrupt:
         # Ctrl-C: stop quietly and still print the summary.
-        console.print("[yellow]simulazione interrotta[/]")
+        console.print("[yellow]simulation interrupted[/]")
     console.print(f"[bold]{riepilogo(mondo, args.ordini)}[/]")
 
 

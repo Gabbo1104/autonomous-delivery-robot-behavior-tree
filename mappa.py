@@ -51,15 +51,15 @@ MURO, SCALINI, LIBERO = "#", "=", " "   # wall, stairs, free floor
 CELLE = {
     # South corridor (west to east). These sit in the corridor right in front of
     # the room doors below them.
-    "c_sud_ovest": (5, 22), "c_scale": (15, 22), "c_101": (25, 22), "c_103": (34, 22),
+    "c_south_west": (5, 22), "c_stairs": (15, 22), "c_101": (25, 22), "c_103": (34, 22),
     "c_105": (42, 22), "c_107": (50, 22), "c_109": (59, 22), "c_111": (66, 22),
     # East corridor (south to north).
-    "c_113": (59, 17), "c_115": (59, 12), "c_117": (59, 8), "c_nord_est": (59, 6),
+    "c_113": (59, 17), "c_115": (59, 12), "c_117": (59, 8), "c_north_east": (59, 6),
     # North corridor (east to west).
     "c_119": (53, 6), "c_121": (45, 6), "c_123": (37, 6), "c_125": (29, 6),
-    "c_127": (21, 6), "c_129": (13, 6), "c_nord_ovest": (5, 6),
+    "c_127": (21, 6), "c_129": (13, 6), "c_north_west": (5, 6),
     # West corridor: the charging station is a node of its own.
-    "caricabatterie": (5, 14),
+    "charger": (5, 14),
     # Rooms: one node in the middle of each room.
     "r131": (5, 3), "r129": (13, 3), "r127": (21, 3), "r125": (29, 3),
     "r123": (37, 3), "r121": (45, 3), "r119": (53, 3),
@@ -79,7 +79,7 @@ NODI = {n: (c, r * 2) for n, (c, r) in CELLE.items()}
 # The stairs are open towards the corridor and the robot must never get close to
 # them. SCALE is the metric position of the middle of the staircase; a node is
 # "too close" when its distance from SCALE is below DISTANZA_SICUREZZA_SCALE.
-# With these numbers only "c_scale" (6 m away) is too close; its neighbours
+# With these numbers only "c_stairs" (6 m away) is too close; its neighbours
 # (about 11.7 m away) are safe. See Mondo.lontano_dalle_scale.
 SCALE = (15, 50)
 DISTANZA_SICUREZZA_SCALE = 7.0
@@ -91,29 +91,29 @@ DISTANZA_SICUREZZA_SCALE = 7.0
 #   TOWARDS that node. Moving in that direction the robot can PUSH the door
 #   open; moving the other way it would have to PULL, which it cannot do, so it
 #   must use the key instead (see Mondo.spingi / Mondo.usa_chiave and the
-#   "bisogna spingere?" condition in rami/navigazione.py).
+#   "does it need pushing?" condition in rami/navigazione.py).
 # Edges are undirected: the robot can travel both ways on every edge.
 # percorso.py only looks at the first two items of each tuple.
 ARCHI = [
     # Corridor ring: south -> east -> north -> west -> back to south.
-    ("c_sud_ovest", "c_scale", None), ("c_scale", "c_101", None),
+    ("c_south_west", "c_stairs", None), ("c_stairs", "c_101", None),
     ("c_101", "c_103", None), ("c_103", "c_105", None), ("c_105", "c_107", None),
     ("c_107", "c_109", None), ("c_109", "c_111", None),
     ("c_109", "c_113", None), ("c_113", "c_115", None), ("c_115", "c_117", None),
-    ("c_117", "c_nord_est", None),
-    ("c_nord_est", "c_119", None), ("c_119", "c_121", None), ("c_121", "c_123", None),
+    ("c_117", "c_north_east", None),
+    ("c_north_east", "c_119", None), ("c_119", "c_121", None), ("c_121", "c_123", None),
     ("c_123", "c_125", None), ("c_125", "c_127", None), ("c_127", "c_129", None),
-    ("c_129", "c_nord_ovest", None),
-    ("c_nord_ovest", "caricabatterie", None), ("caricabatterie", "c_sud_ovest", None),
+    ("c_129", "c_north_west", None),
+    ("c_north_west", "charger", None), ("charger", "c_south_west", None),
     # Rooms: every room door swings inwards (towards the room), so the robot
     # pushes to get in and needs the key to get out.
-    ("c_sud_ovest", "main_office", "main_office"), ("c_101", "r101", "r101"),
+    ("c_south_west", "main_office", "main_office"), ("c_101", "r101", "r101"),
     ("c_103", "r103", "r103"), ("c_105", "r105", "r105"), ("c_107", "r107", "r107"),
     ("c_109", "r109", "r109"), ("c_111", "r111", "r111"),
     ("c_113", "r113", "r113"), ("c_115", "r115", "r115"), ("c_117", "r117", "r117"),
     ("c_119", "r119", "r119"), ("c_121", "r121", "r121"), ("c_123", "r123", "r123"),
     ("c_125", "r125", "r125"), ("c_127", "r127", "r127"), ("c_129", "r129", "r129"),
-    ("c_nord_ovest", "r131", "r131"),
+    ("c_north_west", "r131", "r131"),
     # Labs: swing directions copied from the door arcs drawn on the floor plan
     # (some lab doors open towards the corridor, some towards the lab).
     ("c_129", "lab_d", "c_129"), ("c_123", "lab_c", "lab_c"),
@@ -127,7 +127,7 @@ ARCHI = [
 # a wall, and celle_arco "opens" it only when walking that specific edge. Every
 # edge with a non-None verso must have an entry here (checked by the tests).
 CELLE_PORTE = {
-    frozenset(("c_sud_ovest", "main_office")): (5, 23),
+    frozenset(("c_south_west", "main_office")): (5, 23),
     frozenset(("c_101", "r101")): (25, 23), frozenset(("c_103", "r103")): (34, 23),
     frozenset(("c_105", "r105")): (42, 23), frozenset(("c_107", "r107")): (50, 23),
     frozenset(("c_109", "r109")): (58, 23), frozenset(("c_111", "r111")): (66, 23),
@@ -136,7 +136,7 @@ CELLE_PORTE = {
     frozenset(("c_119", "r119")): (53, 5), frozenset(("c_121", "r121")): (45, 5),
     frozenset(("c_123", "r123")): (37, 5), frozenset(("c_125", "r125")): (29, 5),
     frozenset(("c_127", "r127")): (21, 5), frozenset(("c_129", "r129")): (13, 5),
-    frozenset(("c_nord_ovest", "r131")): (5, 5),
+    frozenset(("c_north_west", "r131")): (5, 5),
     frozenset(("c_129", "lab_d")): (16, 8), frozenset(("c_123", "lab_c")): (38, 8),
     frozenset(("c_101", "lab_a")): (29, 20), frozenset(("c_103", "lab_b")): (36, 20),
     frozenset(("c_107", "lab_b")): (50, 20),
@@ -155,7 +155,7 @@ PARTENZA = "c_103"
 ETICHETTE = {
     "r131": (3, 1), "r129": (11, 1), "r127": (19, 1), "r125": (27, 1), "r123": (35, 1),
     "r121": (43, 1), "r119": (51, 1), "r117": (64, 7), "r115": (64, 11), "r113": (64, 16),
-    "office": (2, 26), "scale": (13, 26), "r101": (23, 26), "r103": (32, 26),
+    "office": (2, 26), "stairs": (13, 26), "r101": (23, 26), "r103": (32, 26),
     "r105": (40, 26), "r107": (48, 26), "r109": (56, 26), "r111": (64, 26),
     "lab D": (12, 9), "lab C": (35, 9), "lab A": (12, 19), "lab B": (35, 19),
 }

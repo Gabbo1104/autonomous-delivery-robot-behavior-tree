@@ -2,29 +2,29 @@
 
 It advances the robot ONE edge at a time towards a target node::
 
-    -> <nome>                          e.g. "Verso il ritiro" / "Verso la consegna"
-    ├── ? Scale                         stay away from the stairs
-    │   ├── C  sono lontano dalle scale?
-    │   └── A  allontanati              step away from the stairs (RUNNING)
-    ├── ? Strada                        make sure the next edge can be travelled
-    │   ├── C  strada libera?           nothing in the way
-    │   ├── -> Porta                    a closed door is in the way
-    │   │   ├── C  c'è una porta?
-    │   │   └── ? Apri porta
-    │   │       ├── -> Spingi
-    │   │       │   ├── C  bisogna spingere?   door swings away from the robot
-    │   │       │   └── A  spingi              push it open
-    │   │       └── A  usa la chiave           it would need pulling: use the key
-    │   └── A  torna indietro           an obstacle: remember it, re-plan (RUNNING)
-    └── A  vai avanti                   move one edge (RUNNING), SUCCESS when arrived
+    -> <nome>                            e.g. "To the pick-up point" / "To the delivery point"
+    ├── ? Stairs                         stay away from the stairs
+    │   ├── C  am I away from the stairs?
+    │   └── A  move away                 step away from the stairs (RUNNING)
+    ├── ? Way                            make sure the next edge can be travelled
+    │   ├── C  is the way clear?         nothing in the way
+    │   ├── -> Door                      a closed door is in the way
+    │   │   ├── C  is there a door?
+    │   │   └── ? Open door
+    │   │       ├── -> Push
+    │   │       │   ├── C  does it need pushing?   door swings away from the robot
+    │   │       │   └── A  push                    push it open
+    │   │       └── A  use the key                 it would need pulling: use the key
+    │   └── A  turn back                 an obstacle: remember it, re-plan (RUNNING)
+    └── A  move forward                  move one edge (RUNNING), SUCCESS when arrived
 
-Design note: in the drawing the node under "raggiungi il punto di ritiro" is a
-"?" (Selector). Taken literally, the Selector would succeed as soon as "sono
-lontano dalle scale?" succeeds and the road would never be checked. It is
+Design note: in the drawing the node under "Reach the pick-up point" is a
+"?" (Selector). Taken literally, the Selector would succeed as soon as "am I
+away from the stairs?" succeeds and the road would never be checked. It is
 implemented as a Sequence instead: stairs check, then clear the road, then move.
 
-When "Strada" succeeds by opening a door, "vai avanti" moves through it in the
-same tick. When it succeeds through "torna indietro" it returns RUNNING, so the
+When "Way" succeeds by opening a door, "move forward" moves through it in the
+same tick. When it succeeds through "turn back" it returns RUNNING, so the
 tick ends and the next one plans a route around the newly found obstacle.
 """
 from py_trees.common import Status
@@ -41,33 +41,33 @@ def crea_navigazione(mondo, nome, destinazione):
     every tick. ``nome`` is the label of the subtree's root.
     """
     scale = selettore(
-        "Scale",
-        Condizione("sono lontano dalle scale?", mondo.lontano_dalle_scale),
-        Azione("allontanati",
+        "Stairs",
+        Condizione("am I away from the stairs?", mondo.lontano_dalle_scale),
+        Azione("move away",
                lambda: esito(mondo.allontanati_dalle_scale(destinazione()), Status.RUNNING)),
     )
     porta = sequenza(
-        "Porta",
-        Condizione("c'è una porta?", lambda: mondo.porta_chiusa(destinazione())),
+        "Door",
+        Condizione("is there a door?", lambda: mondo.porta_chiusa(destinazione())),
         selettore(
-            "Apri porta",
+            "Open door",
             sequenza(
-                "Spingi",
-                Condizione("bisogna spingere?", lambda: mondo.porta_a_spinta(destinazione())),
-                Azione("spingi", lambda: esito(mondo.spingi(destinazione()))),
+                "Push",
+                Condizione("does it need pushing?", lambda: mondo.porta_a_spinta(destinazione())),
+                Azione("push", lambda: esito(mondo.spingi(destinazione()))),
             ),
-            Azione("usa la chiave", lambda: esito(mondo.usa_chiave(destinazione()))),
+            Azione("use the key", lambda: esito(mondo.usa_chiave(destinazione()))),
         ),
     )
     strada = selettore(
-        "Strada",
-        Condizione("strada libera?", lambda: mondo.strada_libera(destinazione())),
+        "Way",
+        Condizione("is the way clear?", lambda: mondo.strada_libera(destinazione())),
         porta,
         # obstacle: remember it and try another route on the next tick
-        Azione("torna indietro", lambda: esito(mondo.torna_indietro(destinazione()), Status.RUNNING)),
+        Azione("turn back", lambda: esito(mondo.torna_indietro(destinazione()), Status.RUNNING)),
     )
     vai_avanti = Azione(
-        "vai avanti",
+        "move forward",
         # Already there -> SUCCESS. Otherwise move one edge: RUNNING if it moved,
         # FAILURE if it could not (e.g. flat battery).
         lambda: Status.SUCCESS if mondo.posizione == destinazione()

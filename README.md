@@ -7,11 +7,10 @@ around the floor plan of a laboratory building, opens doors, keeps away from
 the stairs, works around obstacles it discovers along the way and goes to
 recharge when the battery is no longer enough.
 
-The simulation can be followed as an animation in the terminal (the program's
-interface is in Italian):
+The simulation can be followed as an animation in the terminal:
 
 ```text
-╭──────────────────────── Piano del laboratorio ────────────────────────╮
+╭────────────────────────── Laboratory floor ───────────────────────────╮
 │███████████████████████████████████████████████████████████████████████│
 │█  r131  █ r129  █ r127  █ r125  █ r123  █ r121  █ r119  █            █│
 │█        █       █       █       █       █       █       █            █│
@@ -22,14 +21,14 @@ interface is in Italian):
 │█                                                             █ r117  █│
 │█         ██████▒█████████████████████▒██████████████████     ▒       █│
 │█         █ lab D                █ lab C                █     █       █│
-│█         █                      █                      █x    █████████│
+│█         █                      █                      █     █████████│
 │█         █                      █                      █     █ r115  █│
 │█         █                      █                      █  B  ▒       █│
 │█         █                      █                      █     █       █│
 │█    +    █████████████████▒██████████████████████▒██████     █       █│
-│█         █                     @                       █     █████████│
+│█         █                                             █     █████████│
 │█         █                                             █     █ r113  █│
-│█         █                      █                      █     ▒       █│
+│█         █                      █           @          █     ▒       █│
 │█         █                      █                      █     █       █│
 │█         █ lab A                █ lab B                █     █       █│
 │█         ███████████████████▒██████▒█████████████▒██████     █████████│
@@ -38,30 +37,27 @@ interface is in Italian):
 │█████▒█████≡≡≡≡≡≡≡≡≡█████▒████████▒███████▒███████▒███████▒███████▒████│
 │█         █≡≡≡≡≡≡≡≡≡█         █       █       █       █       █       █│
 │█         █≡≡≡≡≡≡≡≡≡█         █       █       █       █       █       █│
-│█ office  █≡≡scale≡≡█  r101   █ r103  █ r105  █ r107  █ r109  █ r111  █│
+│█ office  █≡≡stairs≡█  r101   █ r103  █ r105  █ r107  █ r109  █ r111  █│
 │███████████████████████████████████████████████████████████████████████│
-╰───────────────── seed 7: partenza r131, batteria 70% ─────────────────╯
-╭──────────────────────────────── Stato ────────────────────────────────╮
-│ tick     9                                                            │
-│ batteria ████████████░░░░░░░░  59%                                    │
-│ ordine   pacco #1: r131 → c_115                                       │
-│ in mano  pacco #1                                                     │
-│ nodo     lab_b                                                        │
-│ albero   Raggiungi il punto di consegna › Verso la consegna › vai     │
-│          avanti                                                       │
+╰─────────────────── seed 7: start r131, battery 70% ───────────────────╯
+╭─────────────────────────────── Status ────────────────────────────────╮
+│ tick    9                                                             │
+│ battery ████████████░░░░░░░░  59%                                     │
+│ order   parcel #1: r131 → c_115                                       │
+│ holding parcel #1                                                     │
+│ node    lab_b                                                         │
+│ tree    Reach the delivery point › To the delivery point › move       │
+│         forward                                                       │
 │                                                                       │
 │ c_129 -> lab_d (63%)                                                  │
-│ spinge la porta lab_d|lab_a                                           │
+│ pushes the door lab_d|lab_a                                           │
 │ lab_d -> lab_a (61%)                                                  │
 │ lab_a -> lab_b (59%)                                                  │
 │                                                                       │
-│  @ robot   A ritiro   B consegna   + carica   ▒ porta chiusa   ░      │
-│ porta aperta   X ostacolo                                             │
+│  @ robot   A pick-up   B delivery   + charger   ▒ closed door   ░     │
+│ open door   X obstacle                                                │
 ╰───────────────────────────────────────────────────────────────────────╯
 ```
-
-On the map: `@` is the robot, `A` the pick-up point, `B` the delivery point,
-`+` the charger, `▒` a closed door, `░` an open door and `X` an obstacle.
 
 ## Quick start
 

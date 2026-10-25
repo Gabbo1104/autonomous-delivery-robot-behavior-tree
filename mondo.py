@@ -27,7 +27,7 @@ Glossary of Italian names: mondo = world, ordine = order, ritiro = pickup,
 consegna = delivery, arrivo = arrival time, oggetto = item, batteria = battery,
 in carica = charging, posizione = position, porta = door, aperta = open,
 ostacolo = obstacle, bloccato = blocked, noto = known, spingi = push,
-chiave = key, avanza = move forward, torna indietro = turn back,
+chiave = key, avanza = move forward, turn back = turn back,
 scale = stairs, registra = log, prossimo passo = next step, destinazione = target.
 """
 from dataclasses import dataclass
@@ -41,7 +41,7 @@ CONSUMO_PER_METRO = 0.1     # % per metre: with a 20% reserve the robot can driv
 CONSUMO_PORTA = 0.5         # % to open a door
 RICARICA_PER_TICK = 10.0    # % recovered per tick while on the charger
 # Item names used for generated orders (cycled; a "#n" suffix keeps them unique).
-OGGETTI = ["pacco", "libro", "chiavetta", "caffè", "documenti", "attrezzi", "campione", "cavo"]
+OGGETTI = ["parcel", "book", "usb stick", "coffee", "documents", "tools", "sample", "cable"]
 
 
 @dataclass
@@ -59,7 +59,7 @@ def genera_ordini(n, seed=None):
 
     Any node of the map can be a pickup/delivery point, corridors included.
     Orders arrive at increasing ticks (0 to 30 ticks apart), so with several
-    orders the robot sometimes has to wait ("attendi ordine").
+    orders the robot sometimes has to wait ("wait for an order").
     The same ``seed`` always produces the same orders (reproducible runs).
     """
     rng = random.Random(seed)
@@ -149,7 +149,7 @@ class Mondo:
         self.metri = 0.0                # total distance travelled
         self.ultimo_passo = None   # (from, to) of the latest move, read and reset by the terminal view
         self.verboso = verboso          # True = also print every log line (main.py)
-        self.log = []                   # human-readable event log (Italian, shown to the user)
+        self.log = []                   # human-readable event log (shown to the user)
 
     # --- helpers --------------------------------------------------------------
     def registra(self, messaggio):
@@ -186,7 +186,7 @@ class Mondo:
         and closes the door behind the robot. Fails only with a flat battery.
         """
         if self.batteria <= 0:
-            self.registra("batteria scarica: impossibile muoversi")
+            self.registra("battery flat: cannot move")
             return False
         e = arco(self.posizione, nodo)
         metri = distanza(mappa.NODI[self.posizione], mappa.NODI[nodo])
@@ -207,7 +207,7 @@ class Mondo:
         the distance and every door on the way. Returns 100 (i.e. "impossible")
         if the charger is currently unreachable.
         """
-        p = percorso(mappa.NODI, mappa.ARCHI, self.posizione, "caricabatterie",
+        p = percorso(mappa.NODI, mappa.ARCHI, self.posizione, "charger",
                      bloccati=[tuple(e) for e in self.bloccati_noti])
         porte = sum(arco(a, b) in self.porte for a, b in zip(p, p[1:])) if p else 0
         return (lunghezza(mappa.NODI, p) * CONSUMO_PER_METRO + porte * CONSUMO_PORTA) if p else 100.0
@@ -226,7 +226,7 @@ class Mondo:
 
     def al_caricabatterie(self):
         """True if the robot is on the charging station node."""
-        return self.posizione == "caricabatterie"
+        return self.posizione == "charger"
 
     def lontano_dalle_scale(self):
         """True if the robot is at a safe distance from the open staircase."""
@@ -245,14 +245,14 @@ class Mondo:
         return e not in self.ostacoli and (e not in self.porte or e in self.porte_aperte)
 
     def porta_chiusa(self, destinazione):
-        """True if there is a closed door on the next edge ("c'è una porta?" in the tree)."""
+        """True if there is a closed door on the next edge ("is there a door?" in the tree)."""
         _, e = self._arco_davanti(destinazione)
         return e is not None and e in self.porte and e not in self.porte_aperte
 
     def porta_a_spinta(self, destinazione):
         """True if the door in front swings in the direction the robot is going.
 
-        That is the "bisogna spingere?" ("do I need to push?") condition: if the
+        That is the "does it need pushing?" ("do I need to push?") condition: if the
         door opens away from the robot it can push it; otherwise opening it would
         require pulling, which the robot cannot do.
         """
@@ -264,18 +264,18 @@ class Mondo:
         """Push open the door in front. Only works from the side it swings away from."""
         if not self.porta_chiusa(destinazione) or not self.porta_a_spinta(destinazione):
             return False
-        return self._apri(destinazione, "spinge la porta")
+        return self._apri(destinazione, "pushes the door")
 
     def usa_chiave(self, destinazione):
         """Open the door in front with the key.
 
         Used when the door would swing towards the robot (it would have to pull):
         the key unlocks the automatic opener. It works on any closed door; the
-        tree only reaches it after "bisogna spingere?" failed.
+        tree only reaches it after "does it need pushing?" failed.
         """
         if not self.porta_chiusa(destinazione):
             return False
-        return self._apri(destinazione, "non può tirare: usa la chiave sulla porta")
+        return self._apri(destinazione, "cannot pull: uses the key on the door")
 
     def _apri(self, destinazione, descrizione):
         """Mark the door on the next edge as open, pay the energy cost and log it."""
@@ -303,7 +303,7 @@ class Mondo:
         if e is None:
             return False
         self.bloccati_noti.add(e)
-        self.registra(f"ostacolo su {self.posizione}|{nxt}: ripianifico")
+        self.registra(f"obstacle on {self.posizione}|{nxt}: replanning")
         return self.prossimo_passo(destinazione) is not None
 
     def allontanati_dalle_scale(self, destinazione):
@@ -324,7 +324,7 @@ class Mondo:
             return False
         nxt = self.prossimo_passo(destinazione)
         scelto = nxt if nxt in candidati else max(candidati, key=lambda n: distanza(mappa.NODI[n], mappa.SCALE))
-        self.registra("troppo vicino alle scale: mi allontano")
+        self.registra("too close to the stairs: moving away")
         return self._sposta(scelto)
 
     def vai_verso(self, destinazione):
@@ -350,12 +350,12 @@ class Mondo:
         full: this implements "complete the action only when it reaches 100%".
         """
         if not self.in_carica:
-            self.registra(f"inizio ricarica ({self.batteria:.0f}%)")
+            self.registra(f"charging started ({self.batteria:.0f}%)")
         self.in_carica = True
         self.batteria = min(100.0, self.batteria + RICARICA_PER_TICK)
         if self.batteria >= 100:
             self.in_carica = False
-            self.registra("ricarica completata (100%)")
+            self.registra("charging complete (100%)")
             return True
         return False
 
@@ -364,7 +364,7 @@ class Mondo:
         if self.coda and self.coda[0].arrivo <= self.tick:
             self.ordine = self.coda.pop(0)
             o = self.ordine
-            self.registra(f"nuovo ordine {o.id}: {o.oggetto} da {o.ritiro} a {o.consegna}")
+            self.registra(f"new order {o.id}: {o.oggetto} from {o.ritiro} to {o.consegna}")
             return True
         return False
 
@@ -375,7 +375,7 @@ class Mondo:
             return False
         del self.oggetti[o.oggetto]   # the item is no longer lying anywhere: it is in the robot's hands
         self.oggetto_in_mano = o.oggetto
-        self.registra(f"prende {o.oggetto} in {self.posizione}")
+        self.registra(f"picks up {o.oggetto} at {self.posizione}")
         return True
 
     def posa(self):
@@ -385,7 +385,7 @@ class Mondo:
             return False
         self.oggetti[o.oggetto] = self.posizione
         self.oggetto_in_mano = None
-        self.registra(f"posa {o.oggetto} in {self.posizione}")
+        self.registra(f"puts down {o.oggetto} at {self.posizione}")
         return True
 
     def chiudi_ordine(self):
@@ -393,7 +393,7 @@ class Mondo:
         if self.ordine is None or self.oggetti.get(self.ordine.oggetto) != self.ordine.consegna:
             return False
         self.completati.append(self.ordine)
-        self.registra(f"ordine {self.ordine.id} chiuso")
+        self.registra(f"order {self.ordine.id} closed")
         self.ordine = None
         return True
 

@@ -1,18 +1,17 @@
-"""Robot che prende un oggetto in una stanza e lo porta in un'altra (behavior tree py_trees).
+"""Robot that picks up an item in one room and carries it to another (py_trees behavior tree).
 
-Partenza, punto di ritiro, punto di consegna e batteria sono casuali;
-lo stesso --seed ripete la stessa simulazione.
+Start, pick-up point, delivery point and battery are random;
+the same --seed replays the same simulation.
 
-Esempi:
+Examples:
     uv run main.py
     uv run main.py --seed 42
     uv run main.py --ordini 8 --ostacoli 3 --seed 7 --batteria 40
     uv run main.py --mostra-albero
-    uv run tui.py              # stessa simulazione, animata nel terminale
+    uv run tui.py              # same simulation, animated in the terminal
 """
-# NOTE: the docstring above stays in Italian on purpose: it is passed to argparse
-# (description=__doc__) and is what users see with --help, and the whole user
-# interface of this project is in Italian.
+# NOTE: the docstring above is passed to argparse (description=__doc__) and is
+# what users see with --help.
 #
 # Entry point of the project: builds the behaviour tree and runs the simulation
 # as plain text (one log line per event). tui.py reuses simula(),
@@ -116,12 +115,11 @@ def opzioni_scenario(ap):
                  so that an interesting run can be replayed exactly)
     --batteria   initial charge in %; omit it for randint(1, 100)
     --max-tick   safety limit on the number of ticks
-    Help texts are in Italian like the rest of the user interface.
     """
     ap.add_argument("--ordini", type=int, default=1)
-    ap.add_argument("--ostacoli", type=int, default=2, help="ostacoli nascosti nel corridoio")
-    ap.add_argument("--seed", type=int, help="default: casuale (viene stampato)")
-    ap.add_argument("--batteria", type=float, help="carica iniziale in %% (default: randint 1-100)")
+    ap.add_argument("--ostacoli", type=int, default=2, help="hidden obstacles in the corridors")
+    ap.add_argument("--seed", type=int, help="default: random (it is printed)")
+    ap.add_argument("--batteria", type=float, help="initial charge in %% (default: randint 1-100)")
     ap.add_argument("--max-tick", type=int, default=5000)
 
 
@@ -140,23 +138,23 @@ def crea_scenario(args, verboso=False):
         batteria = args.batteria   # explicit --batteria overrides the random value
     mondo = Mondo(genera_ordini(args.ordini, seed), genera_ostacoli(args.ostacoli, seed),
                   batteria=batteria, posizione=partenza, verboso=verboso)
-    return mondo, f"seed {seed}: partenza {partenza}, batteria {batteria:.0f}%"
+    return mondo, f"seed {seed}: start {partenza}, battery {batteria:.0f}%"
 
 
 def riepilogo(mondo, ordini):
-    """One-line summary of how the simulation ended (in Italian, shown to the user)."""
-    esito = ("tutti gli ordini completati" if mondo.finito()
-             else "robot fermo: batteria scarica" if mondo.batteria <= 0 else "limite di tick raggiunto")
-    return (f"{esito}: {len(mondo.completati)}/{ordini} ordini, {mondo.tick} tick, "
-            f"{mondo.metri:.0f} m percorsi, batteria {mondo.batteria:.0f}%")
+    """One-line summary of how the simulation ended (shown to the user)."""
+    esito = ("all orders completed" if mondo.finito()
+             else "robot stopped: battery flat" if mondo.batteria <= 0 else "tick limit reached")
+    return (f"{esito}: {len(mondo.completati)}/{ordini} orders, {mondo.tick} ticks, "
+            f"{mondo.metri:.0f} m travelled, battery {mondo.batteria:.0f}%")
 
 
 def main():
     """Command-line entry point: parse options, build the scenario, run it as text."""
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     opzioni_scenario(ap)
-    ap.add_argument("--mostra-albero", action="store_true", help="stampa l'albero e esce")
-    ap.add_argument("--stato", action="store_true", help="stampa lo stato dell'albero a ogni tick")
+    ap.add_argument("--mostra-albero", action="store_true", help="print the tree and exit")
+    ap.add_argument("--stato", action="store_true", help="print the status of the tree at every tick")
     args = ap.parse_args()
 
     mondo, intestazione = crea_scenario(args, verboso=True)

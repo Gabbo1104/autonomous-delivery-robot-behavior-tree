@@ -2,11 +2,11 @@
 
 Structure (as in the drawing)::
 
-    ? Batteria
-    ├── C  livello > 20% (oltre al ritorno) e non in carica?   -> enough charge: SUCCESS, carry on
-    └── -> Ricarica
-        ├── ? Raggiungi caricabatterie
-        │   ├── C  mi trovo al caricabatterie?
+    ? Battery
+    ├── C  charge > 20% (beyond the way back) and not charging?   -> enough charge: SUCCESS, carry on
+    └── -> Recharge
+        ├── ? Reach the charger
+        │   ├── C  am I at the charger?
         │   └── A  go to charge                                 (one step per tick, RUNNING)
         └── A  charge                                           (RUNNING until 100%)
 
@@ -24,18 +24,18 @@ def crea_batteria(mondo):
     # One automatic step towards the charger per tick (doors and obstacles are
     # handled inside Mondo.vai_verso). RUNNING while moving, FAILURE if stuck.
     vai_in_carica = Azione("go to charge",
-                           lambda: esito(mondo.vai_verso("caricabatterie"), Status.RUNNING))
+                           lambda: esito(mondo.vai_verso("charger"), Status.RUNNING))
     # "complete the action only when it reaches 100%": RUNNING until full
     carica = Azione("charge", lambda: esito(mondo.ricarica(), Status.SUCCESS, Status.RUNNING))
     return selettore(
-        "Batteria",
+        "Battery",
         # The threshold logic lives in Mondo.batteria_ok (20% reserve on top of
         # the energy needed to get back to the charger).
-        Condizione("livello > 20% (oltre al ritorno) e non in carica?", mondo.batteria_ok),
+        Condizione("charge > 20% (beyond the way back) and not charging?", mondo.batteria_ok),
         sequenza(
-            "Ricarica",
-            selettore("Raggiungi caricabatterie",
-                      Condizione("mi trovo al caricabatterie?", mondo.al_caricabatterie),
+            "Recharge",
+            selettore("Reach the charger",
+                      Condizione("am I at the charger?", mondo.al_caricabatterie),
                       vai_in_carica),
             carica,
         ),

@@ -63,4 +63,4 @@ def test_modalita_compatta_sta_in_30_righe():
     out = schermata(tui.Vista(m, "prova", 1, compatta=True), larghezza=73)
     righe = out.splitlines()
     assert len(righe) == mappa.ALTEZZA + 2 and max(len(r) for r in righe) <= 73
-    assert "batteria 40%" in righe[0] and "r131→r111" in righe[0]
+    assert "battery 40%" in righe[0] and "r131→r111" in righe[0]

@@ -96,8 +96,8 @@ def test_mappa_vera_tutto_raggiungibile():
 
 def test_mappa_vera_aggira_il_blocco():
     """Blocking the corridor next to the stairs forces a route around the ring; checks one exact length too."""
-    libero = percorso(mappa.NODI, mappa.ARCHI, "c_103", "c_sud_ovest")
-    assert "c_scale" in libero
-    aggirato = percorso(mappa.NODI, mappa.ARCHI, "c_103", "c_sud_ovest", bloccati=[("c_scale", "c_101")])
-    assert aggirato is not None and "c_scale" not in aggirato
+    libero = percorso(mappa.NODI, mappa.ARCHI, "c_103", "c_south_west")
+    assert "c_stairs" in libero
+    aggirato = percorso(mappa.NODI, mappa.ARCHI, "c_103", "c_south_west", bloccati=[("c_stairs", "c_101")])
+    assert aggirato is not None and "c_stairs" not in aggirato
     assert math.isclose(lunghezza(mappa.NODI, libero), 29.0)
