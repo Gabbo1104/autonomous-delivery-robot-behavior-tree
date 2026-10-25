@@ -32,14 +32,18 @@ LEGENDA = [("@", "robot", "robot"), ("A", "ritiro", "ritiro"), ("B", "consegna",
            ("░", "porta aperta", "porta_aperta"), ("X", "ostacolo", "ostacolo")]
 
 
+LARGHEZZA_MINIMA = mappa.LARGHEZZA + 2   # mappa + bordo del riquadro
+
+
 def centro(celle):
     return celle[len(celle) // 2]
 
 
 class Vista:
-    def __init__(self, mondo, intestazione, ordini, affiancati=False):
+    def __init__(self, mondo, intestazione, ordini, affiancati=False, compatta=False):
         self.mondo = mondo
         self.affiancati = affiancati   # stato accanto alla mappa invece che sotto
+        self.compatta = compatta       # terminale basso: stato essenziale nel bordo della mappa
         self.intestazione = intestazione
         self.ordini = ordini
         self.robot = mappa.CELLE[mondo.posizione]
@@ -81,7 +85,15 @@ class Vista:
                 t.append(ch, stile)
             if i < mappa.ALTEZZA - 1:
                 t.append("\n")
-        return Panel(t, title="Piano del laboratorio", subtitle=self.intestazione, expand=False)
+        if self.compatta:
+            m = self.mondo
+            titolo = (f"t{m.tick} · batteria {m.batteria:.0f}%{' ⚡' if m.in_carica else ''} · "
+                      + (f"{m.ordine.ritiro}→{m.ordine.consegna}" if m.ordine else "nessun ordine")
+                      + (f" · in mano {m.oggetto_in_mano}" if m.oggetto_in_mano else ""))
+            evento = m.log[-1].split("] ", 1)[1] if m.log else self.intestazione
+            sottotitolo = f"{self._ramo_attivo().split(' › ')[-1]} · {evento}"
+            return Panel(t, title=titolo, subtitle=sottotitolo[:LARGHEZZA_MINIMA - 6], expand=False, padding=0)
+        return Panel(t, title="Piano del laboratorio", subtitle=self.intestazione, expand=False, padding=0)
 
     def _ramo_attivo(self):
         if self.albero is None:
@@ -115,10 +127,12 @@ class Vista:
             legenda.append(f"{nome}  ")
         righe_eventi = 14 if self.affiancati else 4
         eventi = Text("\n".join(r.split("] ", 1)[1] for r in m.log[-righe_eventi:]), "grey70")
-        larghezza = 52 if self.affiancati else mappa.LARGHEZZA + 4
+        larghezza = 52 if self.affiancati else LARGHEZZA_MINIMA
         return Panel(Group(tab, Text(), eventi, Text(), legenda), title="Stato", width=larghezza)
 
     def disegna(self):
+        if self.compatta:
+            return self.pannello_mappa()
         if self.affiancati:
             griglia = Table.grid(padding=(0, 1))
             griglia.add_row(self.pannello_mappa(), self.pannello_stato())
@@ -153,11 +167,21 @@ def main():
 
     mondo, intestazione = crea_scenario(args)
     console = Console()
-    vista = Vista(mondo, intestazione, args.ordini, affiancati=console.width >= 128)
-    with Live(vista.disegna(), console=console, auto_refresh=False) as live:
-        time.sleep(1)
-        simula(mondo, args.max_tick, dopo_tick=vista.dopo_tick(live, 1 / args.velocita))
-        live.update(vista.disegna(), refresh=True)
+    if console.width < LARGHEZZA_MINIMA:
+        console.print(f"[bold yellow]Il terminale è largo {console.width} colonne, la mappa ne richiede "
+                      f"{LARGHEZZA_MINIMA}: allarga la finestra o rimpicciolisci il carattere, "
+                      f"altrimenti il lato est viene tagliato.[/]")
+        time.sleep(3)
+    affiancati = console.width >= LARGHEZZA_MINIMA + 53
+    compatta = not affiancati and console.height < mappa.ALTEZZA + 2 + 17
+    vista = Vista(mondo, intestazione, args.ordini, affiancati, compatta)
+    try:
+        with Live(vista.disegna(), console=console, auto_refresh=False) as live:
+            time.sleep(1)
+            simula(mondo, args.max_tick, dopo_tick=vista.dopo_tick(live, 1 / args.velocita))
+            live.update(vista.disegna(), refresh=True)
+    except KeyboardInterrupt:
+        console.print("[yellow]simulazione interrotta[/]")
     console.print(f"[bold]{riepilogo(mondo, args.ordini)}[/]")
 
 

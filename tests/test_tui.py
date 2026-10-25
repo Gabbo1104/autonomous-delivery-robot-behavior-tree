@@ -44,3 +44,12 @@ def test_animazione_casella_per_casella_senza_attraversare_muri(monkeypatch):
     porte = set(mappa.CELLE_PORTE.values())
     for c, r in posizioni:
         assert mappa.GRIGLIA[r][c] == mappa.LIBERO or (c, r) in porte
+
+
+def test_modalita_compatta_sta_in_30_righe():
+    m = Mondo([Ordine(1, "pacco", "r131", "r111")], posizione="c_103", batteria=40)
+    m.attendi_ordine()
+    out = schermata(tui.Vista(m, "prova", 1, compatta=True), larghezza=73)
+    righe = out.splitlines()
+    assert len(righe) == mappa.ALTEZZA + 2 and max(len(r) for r in righe) <= 73
+    assert "batteria 40%" in righe[0] and "r131→r111" in righe[0]
