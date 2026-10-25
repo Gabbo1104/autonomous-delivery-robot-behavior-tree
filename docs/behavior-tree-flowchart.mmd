@@ -1,0 +1,155 @@
+%% Flowchart di esecuzione di un tick del behavior tree (main.crea_albero).
+%% Ogni box di contorno è un nodo composto: "→" Sequence, "?" Selector.
+%% Le frecce portano lo stato restituito dal figlio: una Sequence passa al
+%% figlio successivo con SUCCESS, un Selector con FAILURE; RUNNING chiude
+%% sempre il tick. Tutti i composti hanno memory=False, quindi il tick
+%% successivo riparte da Root e ricontrolla per prima la batteria.
+flowchart TD
+    start(("tick")) --> bc
+
+    subgraph ROOT["→ Root"]
+        subgraph BAT["? Batteria"]
+            bc{"C · livello > 20%<br/>oltre al ritorno<br/>e non in carica?"}
+            subgraph RIC["→ Ricarica"]
+                subgraph RCAR["? Raggiungi caricabatterie"]
+                    alc{"C · mi trovo al<br/>caricabatterie?"}
+                    gtc("A · go to charge")
+                end
+                chg("A · charge<br/>(finisce solo al 100%)")
+            end
+        end
+        subgraph ORD["? Ordine"]
+            oc{"C · ho un ordine?"}
+            att("A · attendi ordine")
+        end
+        subgraph RIT["? Raggiungi il punto di ritiro"]
+            rc1{"C · ho l'oggetto<br/>in mano?"}
+            rc2{"C · sono già lì?"}
+            nav1[["→ Navigazione<br/>verso il ritiro"]]
+        end
+        subgraph PRE["? Prendere l'oggetto"]
+            pc{"C · ho già l'oggetto<br/>in mano?"}
+            pren("A · prendi")
+        end
+        subgraph CON["? Raggiungi il punto di consegna"]
+            cc{"C · sono già lì?"}
+            nav2[["→ Navigazione<br/>verso la consegna"]]
+        end
+        pos("A · posa l'oggetto")
+        chi("A · chiudi l'ordine")
+    end
+
+    %% Ricarica: FAILURE di un figlio risale Ricarica → Batteria → Root
+    bc -- SUCCESS --> oc
+    bc -- FAILURE --> alc
+    alc -- SUCCESS --> chg
+    alc -- FAILURE --> gtc
+    gtc -- SUCCESS --> chg
+    gtc -- RUNNING --> r1(["RUNNING"])
+    gtc -- FAILURE --> f1(["FAILURE"])
+    chg -- SUCCESS --> oc
+    chg -- RUNNING --> r2(["RUNNING"])
+
+    oc -- SUCCESS --> rc1
+    oc -- FAILURE --> att
+    att -- SUCCESS --> rc1
+    att -- RUNNING --> r3(["RUNNING"])
+
+    rc1 -- SUCCESS --> pc
+    rc1 -- FAILURE --> rc2
+    rc2 -- SUCCESS --> pc
+    rc2 -- FAILURE --> nav1
+    nav1 -- SUCCESS --> pc
+    nav1 -- RUNNING --> r4(["RUNNING"])
+    nav1 -- FAILURE --> f2(["FAILURE"])
+
+    pc -- SUCCESS --> cc
+    pc -- FAILURE --> pren
+    pren -- SUCCESS --> cc
+    pren -- FAILURE --> f3(["FAILURE"])
+
+    cc -- SUCCESS --> pos
+    cc -- FAILURE --> nav2
+    nav2 -- SUCCESS --> pos
+    nav2 -- RUNNING --> r5(["RUNNING"])
+    nav2 -- FAILURE --> f4(["FAILURE"])
+
+    pos -- SUCCESS --> chi
+    pos -- FAILURE --> f5(["FAILURE"])
+    chi -- SUCCESS --> ok(["SUCCESS<br/>ordine consegnato"])
+    chi -- FAILURE --> f6(["FAILURE"])
+
+    %% Sottoalbero condiviso, istanziato due volte con destinazioni diverse
+    nav1 -. destinazione = ritiro .-> nin
+    nav2 -. destinazione = consegna .-> nin
+
+    subgraph NAV["→ Navigazione (un passo per tick)"]
+        nin(("ingresso"))
+        subgraph SCA["? Scale"]
+            sc{"C · sono lontano<br/>dalle scale?"}
+            allo("A · allontanati")
+        end
+        subgraph STR["? Strada"]
+            stc{"C · strada libera?"}
+            subgraph POR["→ Porta"]
+                porc{"C · c'è una porta?"}
+                subgraph APR["? Apri porta"]
+                    subgraph SPI["→ Spingi"]
+                        spc{"C · bisogna<br/>spingere?"}
+                        spin("A · spingi")
+                    end
+                    key("A · usa la chiave")
+                end
+            end
+            tor("A · torna indietro<br/>(memorizza l'ostacolo)")
+        end
+        ava("A · vai avanti")
+    end
+
+    nin --> sc
+    sc -- SUCCESS --> stc
+    sc -- FAILURE --> allo
+    allo -- RUNNING --> nR(["Navigazione: RUNNING"])
+    allo -- FAILURE --> nF(["Navigazione: FAILURE"])
+    stc -- SUCCESS --> ava
+    stc -- FAILURE --> porc
+    porc -- SUCCESS --> spc
+    porc -- FAILURE --> tor
+    spc -- SUCCESS --> spin
+    spc -- FAILURE --> key
+    spin -- SUCCESS --> ava
+    spin -- FAILURE --> key
+    key -- SUCCESS --> ava
+    key -- FAILURE --> tor
+    tor -- RUNNING --> nR
+    tor -- FAILURE --> nF
+    ava -- SUCCESS --> nS(["Navigazione: SUCCESS"])
+    ava -- RUNNING --> nR
+    ava -- FAILURE --> nF
+
+    subgraph LEG["Legenda"]
+        lc{"C · condizione<br/>SUCCESS / FAILURE"}
+        la("A · azione<br/>SUCCESS / FAILURE / RUNNING")
+        ls[["sottoalbero"]]
+        lt(["stato restituito a Root:<br/>fine del tick, il prossimo<br/>riparte da Root"])
+    end
+
+    classDef seq fill:#dbeafe,stroke:#1d4ed8,color:#1e3a8a
+    classDef sel fill:#ffedd5,stroke:#c2410c,color:#7c2d12
+    classDef cond fill:#dcfce7,stroke:#15803d,color:#14532d
+    classDef act fill:#f3e8ff,stroke:#7e22ce,color:#581c87
+    classDef sub fill:#dbeafe,stroke:#1d4ed8,color:#1e3a8a,stroke-width:2px
+    classDef ok fill:#bbf7d0,stroke:#15803d,color:#14532d
+    classDef run fill:#fef9c3,stroke:#a16207,color:#713f12
+    classDef ko fill:#fecaca,stroke:#b91c1c,color:#7f1d1d
+    classDef term fill:#f1f5f9,stroke:#475569,color:#0f172a
+
+    class ROOT,RIC,NAV,POR,SPI seq
+    class BAT,RCAR,ORD,RIT,PRE,CON,SCA,STR,APR sel
+    class bc,alc,oc,rc1,rc2,pc,cc,sc,stc,porc,spc,lc cond
+    class gtc,chg,att,pren,pos,chi,allo,spin,key,tor,ava,la act
+    class nav1,nav2,ls sub
+    class ok,nS ok
+    class r1,r2,r3,r4,r5,nR run
+    class f1,f2,f3,f4,f5,f6,nF ko
+    class start,nin,lt term

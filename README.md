@@ -97,47 +97,77 @@ essenziali vanno nel bordo della mappa.
 
 ## Il behavior tree
 
-```text
-→ Root
-├── ? Batteria
-│   ├── C livello > 20% (oltre al ritorno) e non in carica?
-│   └── → Ricarica
-│       ├── ? Raggiungi caricabatterie
-│       │   ├── C mi trovo al caricabatterie?
-│       │   └── A go to charge
-│       └── A charge                       (finisce solo al 100%)
-├── ? Ordine
-│   ├── C ho un ordine?
-│   └── A attendi ordine
-├── ? Raggiungi il punto di ritiro
-│   ├── C ho l'oggetto in mano?
-│   ├── C sono già lì?
-│   └── → Navigazione
-├── ? Prendere l'oggetto
-│   ├── C ho già l'oggetto in mano?
-│   └── A prendi
-├── ? Raggiungi il punto di consegna
-│   ├── C sono già lì?
-│   └── → Navigazione
-├── A posa l'oggetto
-└── A chiudi l'ordine
+```mermaid
+flowchart TD
+    root["ROOT ∅"] --> seq["→"]
 
-→ Navigazione (un passo alla volta)
-├── ? Scale
-│   ├── C sono lontano dalle scale?
-│   └── A allontanati
-├── ? Strada
-│   ├── C strada libera?
-│   ├── → Porta
-│   │   ├── C c'è una porta?
-│   │   └── ? Apri porta
-│   │       ├── → C bisogna spingere?  →  A spingi
-│   │       └── A usa la chiave
-│   └── A torna indietro
-└── A vai avanti
+    seq --> bat["? Batteria"]
+    seq --> ord["? Ordine"]
+    seq --> rit["? Raggiungi il punto di ritiro"]
+    seq --> pre["? Prendere l'oggetto"]
+    seq --> con["? Raggiungi il punto di consegna"]
+    seq --> pos(["posa l'oggetto"])
+    seq --> chi(["chiudi l'ordine"])
+
+    bat --> bc("C · livello batteria > 20%<br/>e non sono in carica")
+    bat --> bseq["→"]
+    bseq --> bsel["?"]
+    bseq --> chg(["charge<br/><i>completa l'azione solo<br/>se raggiunge il 100%</i>"])
+    bsel --> bcc("C · mi trovo al<br/>caricabatterie?")
+    bsel --> gtc(["go to charge"])
+
+    ord --> oc("C · ho un ordine?")
+    ord --> att(["attendi ordine"])
+
+    rit --> rc1("C · ho l'oggetto<br/>in mano?")
+    rit --> rc2("C · sono già lì?")
+    rit --> rseq["→"]
+    rseq --> rsca["?"]
+    rseq --> rstr["?"]
+    rseq --> rav(["vai avanti"])
+    rsca --> rsc("C · sono lontano<br/>dalle scale?")
+    rsca --> ral(["allontanati"])
+    rstr --> rsl("C · strade libere?")
+    rstr --> rpor["→"]
+    rstr --> rtor(["torna indietro"])
+    rpor --> rpc("C · c'è una porta?")
+    rpor --> rspc("C · bisogna spingere?")
+    rpor --> rkey(["usa la chiave"])
+    rpor --> rspi(["spingi"])
+
+    pre --> pc("C · ho già l'oggetto<br/>in mano?")
+    pre --> pren(["prendi"])
+
+    con --> cc("C · sono già lì?")
+    con --> cseq["→"]
+    cseq --> csca["?"]
+    cseq --> cstr["?"]
+    cseq --> cav(["vai avanti"])
+    csca --> csc("C · sono lontano<br/>dalle scale?")
+    csca --> cal(["allontanati"])
+    cstr --> csl("C · strade libere?")
+    cstr --> cpor["→"]
+    cstr --> ctor(["torna indietro"])
+    cpor --> cpc("C · c'è una porta?")
+    cpor --> cspc("C · bisogna spingere?")
+    cpor --> ckey(["usa la chiave"])
+    cpor --> cspi(["spingi"])
+
+    classDef root fill:#f1f5f9,stroke:#1e3a8a,color:#0f172a,stroke-width:2px
+    classDef seq fill:#dbeafe,stroke:#1d4ed8,color:#1e3a8a
+    classDef sel fill:#ffedd5,stroke:#c2410c,color:#7c2d12
+    classDef cond fill:#dcfce7,stroke:#15803d,color:#14532d
+    classDef act fill:#f3e8ff,stroke:#7e22ce,color:#581c87
+    class root root
+    class seq,bseq,rseq,rpor,cseq,cpor seq
+    class bat,bsel,ord,rit,rsca,rstr,pre,con,csca,cstr sel
+    class bc,bcc,oc,rc1,rc2,rsc,rsl,rpc,rspc,pc,cc,csc,csl,cpc,cspc cond
+    class pos,chi,chg,gtc,att,rav,ral,rtor,rkey,rspi,pren,cav,cal,ctor,ckey,cspi act
 ```
 
-`→` è una Sequence, `?` un Selector, `C` una condizione, `A` un'azione. Tutti i
+`→` è una Sequence (blu), `?` un Selector (arancione), `C` una condizione
+(verde), gli ovali viola sono azioni; i figli si leggono da sinistra a destra.
+`charge` finisce solo al 100%. Tutti i
 nodi composti sono reattivi (`memory=False`): a ogni tick l'albero riparte
 dalla radice, quindi un calo di batteria interrompe subito una consegna.
 
