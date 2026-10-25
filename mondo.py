@@ -69,12 +69,13 @@ class Mondo:
         self.completati = []
         self.oggetto_in_mano = None
         self.oggetti = {o.oggetto: o.ritiro for o in ordini}
-        self.porte = {arco(a, b): porta for a, b, porta in mappa.ARCHI if porta}
+        self.porte = {arco(a, b): verso for a, b, verso in mappa.ARCHI if verso}  # verso di apertura
         self.porte_aperte = set()
         self.ostacoli = {arco(a, b) for a, b in ostacoli}   # il robot non li conosce
         self.bloccati_noti = set()                          # ostacoli già scoperti
         self.grafo = costruisci_grafo(mappa.NODI, mappa.ARCHI)
         self.metri = 0.0
+        self.ultimo_passo = None   # (da, a) dell'ultimo spostamento, per la vista a terminale
         self.verboso = verboso
         self.log = []
 
@@ -109,6 +110,7 @@ class Mondo:
         self._consuma(metri * CONSUMO_PER_METRO)
         self.metri += metri
         self.registra(f"{self.posizione} -> {nodo} ({self.batteria:.0f}%)")
+        self.ultimo_passo = (self.posizione, nodo)
         self.posizione = nodo
         self.in_carica = False
         self.porte_aperte.discard(e)   # le porte si richiudono dopo il passaggio
@@ -143,19 +145,28 @@ class Mondo:
         return e is not None and e in self.porte and e not in self.porte_aperte
 
     def porta_a_spinta(self, destinazione):
-        _, e = self._arco_davanti(destinazione)
-        return self.porte.get(e) == mappa.SPINTA
+        """La porta davanti si apre nella direzione in cui il robot va."""
+        nxt, e = self._arco_davanti(destinazione)
+        return e in self.porte and self.porte[e] == nxt
 
     # --- azioni ------------------------------------------------------------
-    def apri_porta(self, destinazione, modo):
-        """modo = SPINTA o CHIAVE; riesce solo se corrisponde al tipo di porta."""
-        nxt, e = self._arco_davanti(destinazione)
-        if e not in self.porte or self.porte[e] != modo:
+    def spingi(self, destinazione):
+        """Apre la porta davanti spingendola; il robot non può tirare."""
+        if not self.porta_chiusa(destinazione) or not self.porta_a_spinta(destinazione):
             return False
+        return self._apri(destinazione, "spinge la porta")
+
+    def usa_chiave(self, destinazione):
+        """La porta si aprirebbe verso il robot: sblocca l'apertura automatica con la chiave."""
+        if not self.porta_chiusa(destinazione):
+            return False
+        return self._apri(destinazione, "non può tirare: usa la chiave sulla porta")
+
+    def _apri(self, destinazione, descrizione):
+        nxt, e = self._arco_davanti(destinazione)
         self.porte_aperte.add(e)
         self._consuma(CONSUMO_PORTA)
-        azione = "spinge" if modo == mappa.SPINTA else "apre con la chiave"
-        self.registra(f"{azione} la porta {self.posizione}|{nxt}")
+        self.registra(f"{descrizione} {self.posizione}|{nxt}")
         return True
 
     def avanza(self, destinazione):
@@ -192,7 +203,7 @@ class Mondo:
         if self.posizione == destinazione:
             return True
         if self.porta_chiusa(destinazione):
-            return self.apri_porta(destinazione, self.porte[self._arco_davanti(destinazione)[1]])
+            return self.spingi(destinazione) or self.usa_chiave(destinazione)
         if not self.strada_libera(destinazione):
             return self.torna_indietro(destinazione)
         return self.avanza(destinazione)

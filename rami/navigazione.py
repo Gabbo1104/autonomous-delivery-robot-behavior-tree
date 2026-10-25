@@ -5,7 +5,6 @@ ostacolo), poi vai avanti di un nodo.
 """
 from py_trees.common import Status
 
-import mappa
 from rami.comuni import Azione, Condizione, esito, selettore, sequenza
 
 
@@ -25,9 +24,9 @@ def crea_navigazione(mondo, nome, destinazione):
             sequenza(
                 "Spingi",
                 Condizione("bisogna spingere?", lambda: mondo.porta_a_spinta(destinazione())),
-                Azione("spingi", lambda: esito(mondo.apri_porta(destinazione(), mappa.SPINTA))),
+                Azione("spingi", lambda: esito(mondo.spingi(destinazione()))),
             ),
-            Azione("usa la chiave", lambda: esito(mondo.apri_porta(destinazione(), mappa.CHIAVE))),
+            Azione("usa la chiave", lambda: esito(mondo.usa_chiave(destinazione()))),
         ),
     )
     strada = selettore(

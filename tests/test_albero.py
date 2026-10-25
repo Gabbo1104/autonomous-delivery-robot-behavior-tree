@@ -10,13 +10,23 @@ def test_consegna_semplice():
     assert m.oggetti["pacco"] == "r107" and m.oggetto_in_mano is None
 
 
-def test_apre_porte_a_spinta_e_a_chiave():
-    m = Mondo([Ordine(1, "documenti", "main_office", "lab_c")])
+def test_spinge_entrando_e_usa_la_chiave_dove_dovrebbe_tirare():
+    m = Mondo([Ordine(1, "documenti", "main_office", "r101")])
     simula(m, max_tick=400)
     assert m.finito()
     log = "\n".join(m.log)
-    assert "apre con la chiave la porta c_sud_ovest|main_office" in log
-    assert "spinge la porta" in log
+    # la porta dell'ufficio si apre verso l'interno: entrando spinge, uscendo non può tirare
+    assert "spinge la porta c_sud_ovest|main_office" in log
+    assert "usa la chiave sulla porta main_office|c_sud_ovest" in log
+    assert "spinge la porta c_101|r101" in log
+
+
+def test_porta_del_lab_d_si_apre_verso_il_corridoio():
+    m = Mondo(posizione="c_129")
+    assert m.porta_chiusa("lab_d") and not m.porta_a_spinta("lab_d")
+    assert not m.spingi("lab_d")           # da fuori bisognerebbe tirare
+    assert m.usa_chiave("lab_d") and m.avanza("lab_d")
+    assert m.porta_chiusa("c_129") and m.porta_a_spinta("c_129") and m.spingi("c_129")
 
 
 def test_batteria_bassa_va_in_carica_fino_al_100():
