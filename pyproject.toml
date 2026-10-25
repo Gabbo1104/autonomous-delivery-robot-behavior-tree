@@ -1,0 +1,21 @@
+[project]
+name = "robot-consegne"
+version = "0.1.0"
+description = "Robot di consegna simulato con behavior tree (py_trees)"
+authors = [
+    { name = "Gabbo1104", email = "sulpizio.gabriele.11052004@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "py-trees>=2.6.0",
+]
+
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
