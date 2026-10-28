@@ -194,19 +194,21 @@ def test_piano_con_ricarica_tra_ritiro_e_consegna():
     """When the plan puts the charger between pickup and delivery, the robot picks up, charges, then delivers.
 
     Full random runs built as the command line does (8 orders, 100% start):
-    after a few deliveries the charge is lower and some orders get a plan
-    "pickup -> charger -> delivery". There must be enough of them for the check
-    to mean something.
+    after a few deliveries the charge is lower and some orders need a recharge
+    while the item is already in hand (plan "charger -> delivery"). The plan is
+    recomputed every tick, so only the plan made after the pickup is checked.
+    There must be enough such orders for the check to mean something.
     """
     casi = 0
     for seed in range(60):
         args = argparse.Namespace(seed=seed, ordini=8, ostacoli=seed % 5, batteria=100.0)
         m, intestazione = crea_scenario(args)
-        con_ricarica = set()   # items whose order got a plan with the recharge between A and B
+        con_ricarica = set()   # items carried while the plan said "charge, then deliver"
 
         def dopo_tick(_albero, m=m, con_ricarica=con_ricarica):
             o = m.ordine
-            if o and m.piano == [o.ritiro, m.caricatore, o.consegna] and m.caricatore not in (o.ritiro, o.consegna):
+            if o and m.oggetto_in_mano == o.oggetto and m.calcola_piano() == [m.caricatore, o.consegna] \
+                    and m.caricatore != o.consegna:
                 con_ricarica.add(o.oggetto)
 
         simula(m, max_tick=8000, dopo_tick=dopo_tick)
@@ -237,3 +239,15 @@ def test_scenari_completamente_casuali_vanno_a_buon_fine():
         m, intestazione = crea_scenario(args)
         simula(m, max_tick=5000)
         assert m.finito() and len(m.completati) == args.ordini, intestazione
+
+
+def test_partenza_caricatore_e_ordini_sono_indipendenti():
+    """Regression: with the same seed, the pickup was always the start node and the delivery the charger."""
+    uguali_a, uguali_b = 0, 0
+    for seed in range(300):
+        partenza, caricatore = genera_partenza(seed)
+        ordine = genera_ordini(1, seed)[0]
+        uguali_a += ordine.ritiro == partenza
+        uguali_b += ordine.consegna == caricatore
+    # with ~50 safe nodes a coincidence is rare (about 2% each)
+    assert uguali_a < 20 and uguali_b < 20

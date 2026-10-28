@@ -52,6 +52,17 @@ RISERVA = 20.0              # % that must be left after every leg plus the way t
 OGGETTI = ["parcel", "book", "usb stick", "coffee", "documents", "tools", "sample", "cable"]
 
 
+def _generatore(nome, seed):
+    """Random generator for one part of the scenario, derived from the scenario ``seed``.
+
+    Each part (orders, obstacles, start/charger) gets its own stream: with a
+    plain ``random.Random(seed)`` everywhere, the first draws coincided and the
+    pickup point was always the start node and the delivery point the charger.
+    ``seed=None`` still gives an unpredictable generator.
+    """
+    return random.Random(None if seed is None else f"{nome}:{seed}")
+
+
 @dataclass
 class Ordine:
     """A delivery order: carry ``oggetto`` from node ``ritiro`` to node ``consegna``."""
@@ -71,7 +82,7 @@ def genera_ordini(n, seed=None):
     orders the robot sometimes has to wait ("wait for an order").
     The same ``seed`` always produces the same orders (reproducible runs).
     """
-    rng = random.Random(seed)
+    rng = _generatore("ordini", seed)
     ordini, arrivo = [], 0
     for i in range(n):
         ritiro, consegna = rng.sample(mappa.NODI_SICURI, 2)   # sample() never returns the same node twice
@@ -91,7 +102,7 @@ def genera_ostacoli(n, seed=None):
     "reachable from PARTENZA" means "everything is connected", whatever the
     robot's actual starting node is.
     """
-    rng = random.Random(seed)
+    rng = _generatore("ostacoli", seed)
     corridoio = [(a, b) for a, b, porta in mappa.ARCHI
                  if porta is None and a.startswith("c_") and b.startswith("c_")]
     rng.shuffle(corridoio)
@@ -112,7 +123,7 @@ def genera_partenza(seed=None):
     Both are any safe nodes (they may coincide). The robot always starts with
     a full battery (Mondo's default).
     """
-    rng = random.Random(seed)
+    rng = _generatore("partenza", seed)
     return rng.choice(mappa.NODI_SICURI), rng.choice(mappa.NODI_SICURI)
 
 
