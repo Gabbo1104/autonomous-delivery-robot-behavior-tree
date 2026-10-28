@@ -3,7 +3,7 @@
 A single action directly under the root. It is ticked only after the delivery
 branch succeeded, and in the same tick "close the order" follows it.
 """
-from rami.comuni import Azione, esito
+from robot_consegne.rami.comuni import Azione, esito
 
 
 def crea_posa(mondo):

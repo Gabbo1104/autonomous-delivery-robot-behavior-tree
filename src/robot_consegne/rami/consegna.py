@@ -4,8 +4,8 @@
     ├── C  am I already there?       already at the delivery node
     └── -> To the delivery point     navigation subtree (rami/navigazione.py)
 """
-from rami.comuni import Condizione, selettore
-from rami.navigazione import crea_navigazione
+from robot_consegne.rami.comuni import Condizione, selettore
+from robot_consegne.rami.navigazione import crea_navigazione
 
 
 def crea_consegna(mondo):

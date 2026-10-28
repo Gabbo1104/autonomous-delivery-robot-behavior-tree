@@ -29,7 +29,7 @@ tick ends and the next one plans a route around the newly found obstacle.
 """
 from py_trees.common import Status
 
-from rami.comuni import Azione, Condizione, esito, selettore, sequenza
+from robot_consegne.rami.comuni import Azione, Condizione, esito, selettore, sequenza
 
 
 def crea_navigazione(mondo, nome, destinazione):

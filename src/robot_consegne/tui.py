@@ -2,9 +2,9 @@
 doors opening and status of the behavior tree.
 
 Examples:
-    uv run tui.py
-    uv run tui.py --seed 42 --velocita 25
-    uv run tui.py --batteria 10 --ostacoli 4
+    uv run robot-tui
+    uv run robot-tui --seed 42 --velocita 25
+    uv run robot-tui --batteria 10 --ostacoli 4
 """
 # NOTE: the docstring above is the --help text (description=__doc__).
 #
@@ -52,9 +52,9 @@ from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
 
-import mappa
-from main import crea_scenario, opzioni_scenario, riepilogo, simula
-from mondo import arco
+from robot_consegne import mappa
+from robot_consegne.main import crea_scenario, opzioni_scenario, riepilogo, simula
+from robot_consegne.mondo import arco
 
 # rich style of every kind of cell / marker.
 STILE = {

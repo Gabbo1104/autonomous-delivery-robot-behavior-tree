@@ -16,7 +16,7 @@ it was doing (keeping the item in hand, if any) and resumes once charged.
 """
 from py_trees.common import Status
 
-from rami.comuni import Azione, Condizione, esito, selettore, sequenza
+from robot_consegne.rami.comuni import Azione, Condizione, esito, selettore, sequenza
 
 
 def crea_batteria(mondo):

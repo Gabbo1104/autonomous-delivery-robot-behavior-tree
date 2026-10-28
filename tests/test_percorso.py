@@ -9,8 +9,8 @@ import math
 
 import pytest
 
-import mappa
-from percorso import costruisci_grafo, distanza, lunghezza, percorso
+from robot_consegne import mappa
+from robot_consegne.percorso import costruisci_grafo, distanza, lunghezza, percorso
 
 # Unit square A(0,0) B(1,0) C(1,1) D(0,1) without diagonals, plus E isolated.
 # The third item of each edge is ignored by percorso.py ("spinta" is a leftover

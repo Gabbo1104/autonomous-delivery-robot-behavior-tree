@@ -4,11 +4,11 @@ Start, pick-up point, delivery point and battery are random;
 the same --seed replays the same simulation.
 
 Examples:
-    uv run main.py
-    uv run main.py --seed 42
-    uv run main.py --ordini 8 --ostacoli 3 --seed 7 --batteria 40
-    uv run main.py --mostra-albero
-    uv run tui.py              # same simulation, animated in the terminal
+    uv run robot
+    uv run robot --seed 42
+    uv run robot --ordini 8 --ostacoli 3 --seed 7 --batteria 40
+    uv run robot --mostra-albero
+    uv run robot-tui              # same simulation, animated in the terminal
 """
 # NOTE: the docstring above is passed to argparse (description=__doc__) and is
 # what users see with --help.
@@ -20,13 +20,15 @@ Examples:
 #
 # Project layout
 # --------------
-#   main.py         this file: tree assembly, simulation loop, command line
-#   tui.py          animated terminal view (rich)
-#   mondo.py        simulated world: robot state, battery, doors, obstacles, orders
-#   mappa.py        floor map: graph (nodes/edges/doors) + character grid with walls
-#   percorso.py     generic shortest-path functions (Dijkstra) on the graph
-#   rami/           one module per branch of the behaviour tree (see rami/__init__.py)
-#   tests/          pytest suite: `uv run pytest`
+#   src/robot_consegne/   the package
+#     main.py         this file: tree assembly, simulation loop, command line
+#     tui.py          animated terminal view (rich)
+#     mondo.py        simulated world: robot state, battery, doors, obstacles, orders
+#     mappa.py        floor map: graph (nodes/edges/doors) + character grid with walls
+#     percorso.py     generic shortest-path functions (Dijkstra) on the graph
+#     rami/           one module per branch of the behaviour tree (see rami/__init__.py)
+#   tests/            pytest suite: `uv run pytest`
+#   docs/             behavior tree diagram (draw.io + SVG)
 #
 # How one simulation step works
 # -----------------------------
@@ -51,14 +53,14 @@ import random
 
 import py_trees
 
-from mondo import Mondo, genera_ordini, genera_ostacoli, genera_partenza
-from rami.batteria import crea_batteria
-from rami.chiusura import crea_chiusura
-from rami.consegna import crea_consegna
-from rami.ordini import crea_ordini
-from rami.posa import crea_posa
-from rami.presa import crea_presa
-from rami.ritiro import crea_ritiro
+from robot_consegne.mondo import Mondo, genera_ordini, genera_ostacoli, genera_partenza
+from robot_consegne.rami.batteria import crea_batteria
+from robot_consegne.rami.chiusura import crea_chiusura
+from robot_consegne.rami.consegna import crea_consegna
+from robot_consegne.rami.ordini import crea_ordini
+from robot_consegne.rami.posa import crea_posa
+from robot_consegne.rami.presa import crea_presa
+from robot_consegne.rami.ritiro import crea_ritiro
 
 
 def crea_albero(mondo):

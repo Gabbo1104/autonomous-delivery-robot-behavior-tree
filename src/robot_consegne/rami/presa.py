@@ -7,7 +7,7 @@
 Only reached when the pickup branch succeeded, i.e. the robot is at the pickup
 node (or already carrying the item).
 """
-from rami.comuni import Azione, Condizione, esito, selettore
+from robot_consegne.rami.comuni import Azione, Condizione, esito, selettore
 
 
 def crea_presa(mondo):

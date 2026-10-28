@@ -67,7 +67,7 @@ missing).
 ```bash
 git clone https://github.com/Gabbo1104/autonomous-delivery-robot-behavior-tree.git
 cd autonomous-delivery-robot-behavior-tree
-uv run tui.py
+uv run robot-tui
 ```
 
 On the first run uv creates the environment and installs the dependencies
@@ -77,19 +77,19 @@ On the first run uv creates the environment and installs the dependencies
 
 | Command | What it does |
 |---|---|
-| `uv run tui.py` | animated simulation in the terminal |
-| `uv run main.py` | same simulation as a text log |
-| `uv run main.py --mostra-albero` | prints the structure of the behavior tree |
-| `uv run main.py --stato` | prints the status of every node at every tick |
+| `uv run robot-tui` | animated simulation in the terminal |
+| `uv run robot` | same simulation as a text log |
+| `uv run robot --mostra-albero` | prints the structure of the behavior tree |
+| `uv run robot --stato` | prints the status of every node at every tick |
 | `uv run pytest` | runs the tests |
 
-Options shared by `main.py` and `tui.py`:
+Options shared by `robot` and `robot-tui`:
 
 - `--seed N` replays a simulation exactly (the seed is printed at startup);
 - `--batteria N` sets the initial charge (default: random between 1 and 100);
 - `--ordini N` number of deliveries (default 1);
 - `--ostacoli N` hidden obstacles in the corridors (default 2);
-- `--velocita N` `tui.py` only: cells per second (default 12).
+- `--velocita N` `robot-tui` only: cells per second (default 12).
 
 The starting point, pick-up point and delivery point are random across the
 whole map.
@@ -127,13 +127,16 @@ delivery straight away.
 ## Project structure
 
 ```text
-main.py          tree, simulation loop, command line
-tui.py           animated terminal view (rich)
-mondo.py         robot state, battery, doors, obstacles, orders
-mappa.py         node graph and grid with walls and doors
-percorso.py      shortest path (Dijkstra)
-rami/            one module per branch of the tree
+src/robot_consegne/
+  main.py        tree, simulation loop, command line (`robot`)
+  tui.py         animated terminal view with rich (`robot-tui`)
+  mondo.py       robot state, battery, doors, obstacles, orders
+  mappa.py       node graph and grid with walls and doors
+  percorso.py    shortest path (Dijkstra)
+  rami/          one module per branch of the tree
 tests/           tests (pytest)
+docs/            behavior tree diagram (draw.io + SVG)
+pyproject.toml   dependencies and the `robot` / `robot-tui` commands
 ```
 
 ## License

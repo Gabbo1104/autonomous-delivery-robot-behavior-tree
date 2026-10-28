@@ -33,8 +33,8 @@ scale = stairs, registra = log, prossimo passo = next step, destinazione = targe
 from dataclasses import dataclass
 import random
 
-import mappa
-from percorso import costruisci_grafo, distanza, lunghezza, percorso
+from robot_consegne import mappa
+from robot_consegne.percorso import costruisci_grafo, distanza, lunghezza, percorso
 
 # Battery model (all values are percentages of a full battery).
 CONSUMO_PER_METRO = 0.1     # % per metre: with a 20% reserve the robot can drive a full lap (~180 m)

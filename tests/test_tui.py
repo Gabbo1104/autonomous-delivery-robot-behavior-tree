@@ -6,10 +6,10 @@ display is replaced by a fake object so the animation can run instantly
 """
 from rich.console import Console
 
-import mappa
-import tui
-from main import simula
-from mondo import Mondo, Ordine
+from robot_consegne import mappa
+from robot_consegne import tui
+from robot_consegne.main import simula
+from robot_consegne.mondo import Mondo, Ordine
 
 
 def schermata(vista, larghezza=130):

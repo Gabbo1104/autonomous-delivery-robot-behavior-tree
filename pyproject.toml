@@ -11,6 +11,13 @@ dependencies = [
     "rich>=15.0.0",
 ]
 
+[project.scripts]
+robot = "robot_consegne.main:main"
+robot-tui = "robot_consegne.tui:main"
+
+[build-system]
+requires = ["uv_build>=0.8"]
+build-backend = "uv_build"
 
 [dependency-groups]
 dev = [
@@ -18,5 +25,4 @@ dev = [
 ]
 
 [tool.pytest.ini_options]
-pythonpath = ["."]
 testpaths = ["tests"]

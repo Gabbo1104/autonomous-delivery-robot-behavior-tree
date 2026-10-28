@@ -9,8 +9,8 @@ The first condition matters because the root Sequence restarts from the top on
 every tick: once the item is picked up, this branch must succeed immediately so
 that the tree moves on to the delivery branch instead of going back for pickup.
 """
-from rami.comuni import Condizione, selettore
-from rami.navigazione import crea_navigazione
+from robot_consegne.rami.comuni import Condizione, selettore
+from robot_consegne.rami.navigazione import crea_navigazione
 
 
 def crea_ritiro(mondo):

@@ -5,9 +5,9 @@ obstacles, battery), runs main.simula() and then checks the final state and/or
 the event log (Mondo.log, Italian messages). Log assertions therefore depend
 on the exact wording used in mondo.py: update both together.
 """
-import mappa
-from main import simula
-from mondo import Mondo, Ordine, arco, genera_ordini, genera_ostacoli
+from robot_consegne import mappa
+from robot_consegne.main import simula
+from robot_consegne.mondo import Mondo, Ordine, arco, genera_ordini, genera_ostacoli
 
 
 def test_consegna_semplice():
@@ -99,7 +99,7 @@ def test_mai_sulle_scale_e_porte_richiuse():
 
 def test_ostacoli_generati_lasciano_tutto_raggiungibile():
     """genera_ostacoli always places the requested number of obstacles without disconnecting the map."""
-    from percorso import percorso
+    from robot_consegne.percorso import percorso
     for seed in range(30):
         ostacoli = genera_ostacoli(4, seed)
         assert len(ostacoli) == 4
@@ -124,7 +124,7 @@ def test_arriva_al_caricabatterie_a_zero_e_ricarica():
 
 def test_partenza_e_ordini_casuali_su_tutta_la_mappa():
     """Random start/battery/orders: spread over the whole map, battery in 1..100, pickup != delivery, reproducible by seed."""
-    from mondo import genera_partenza
+    from robot_consegne.mondo import genera_partenza
     partenze = {genera_partenza(s)[0] for s in range(300)}
     batterie = [genera_partenza(s)[1] for s in range(300)]
     luoghi = {n for o in genera_ordini(300, seed=1) for n in (o.ritiro, o.consegna)}
@@ -137,7 +137,7 @@ def test_partenza_e_ordini_casuali_su_tutta_la_mappa():
 
 def test_scenari_casuali_con_batteria_sufficiente_vanno_a_buon_fine():
     """Random start nodes with 60% battery always complete the delivery."""
-    from mondo import genera_partenza
+    from robot_consegne.mondo import genera_partenza
     for seed in range(60):
         pos, _ = genera_partenza(seed)
         m = Mondo(genera_ordini(1, seed), genera_ostacoli(2, seed), batteria=60, posizione=pos)

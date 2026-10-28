@@ -6,7 +6,7 @@ into the corridor and walkable stairs.
 """
 import math
 
-import mappa
+from robot_consegne import mappa
 
 
 def test_nodi_su_caselle_libere():

@@ -10,7 +10,7 @@ ordine" succeeds the root Sequence moves straight on to the pickup branch.
 """
 from py_trees.common import Status
 
-from rami.comuni import Azione, Condizione, esito, selettore
+from robot_consegne.rami.comuni import Azione, Condizione, esito, selettore
 
 
 def crea_ordini(mondo):
