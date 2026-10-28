@@ -1,11 +1,14 @@
 # Autonomous delivery robot with a behavior tree
 
-Simulation of a robot that picks up an item in one room and carries it to
-another, driven by a **behavior tree** written with
-[py_trees](https://github.com/splintered-reality/py_trees). The robot moves
-around the floor plan of a laboratory building, opens doors, keeps away from
-the stairs, works around obstacles it discovers along the way and goes to
-recharge when the battery is no longer enough.
+Simulation of a delivery robot driven by a **behavior tree** written with
+[py_trees](https://github.com/splintered-reality/py_trees). The robot gets an
+order (pick up an item at point A, bring it to point B), moves around the floor
+plan of a laboratory building, opens doors, keeps away from the stairs and works
+around obstacles it discovers along the way. It knows where the charging station
+is and plans in advance whether, and where, it has to stop to recharge.
+
+Every run is random: start, charger, A and B are drawn from a seed, and the
+same seed replays the same run.
 
 The simulation can be followed as an animation in the terminal:
 
@@ -17,42 +20,43 @@ The simulation can be followed as an animation in the terminal:
 │█        █       █       █       █       █       █       █            █│
 │█        █       █       █       █       █       █       █            █│
 │█████▒███████▒███████▒███████▒███████▒███████▒███████▒████            █│
-│█                                X                            █████████│
+│█        x                                                    █████████│
 │█                                                             █ r117  █│
 │█         ██████▒█████████████████████▒██████████████████     ▒       █│
 │█         █ lab D                █ lab C                █     █       █│
 │█         █                      █                      █     █████████│
 │█         █                      █                      █     █ r115  █│
-│█         █                      █                      █  B  ▒       █│
+│█         █                      █                      █     ▒       █│
 │█         █                      █                      █     █       █│
-│█    +    █████████████████▒██████████████████████▒██████     █       █│
+│█         █████████████████▒██████████████████████▒██████     █       █│
 │█         █                                             █     █████████│
 │█         █                                             █     █ r113  █│
 │█         █                      █           @          █     ▒       █│
 │█         █                      █                      █     █       █│
 │█         █ lab A                █ lab B                █     █       █│
 │█         ███████████████████▒██████▒█████████████▒██████     █████████│
-│█                             x                                       █│
-│█                                                                     █│
+│█                                                      X              █│
+│█                                                                 +   █│
 │█████▒█████≡≡≡≡≡≡≡≡≡█████▒████████▒███████▒███████▒███████▒███████▒████│
 │█         █≡≡≡≡≡≡≡≡≡█         █       █       █       █       █       █│
-│█         █≡≡≡≡≡≡≡≡≡█         █       █       █       █       █       █│
+│█         █≡≡≡≡≡≡≡≡≡█         █       █       █       █       █   B   █│
 │█ office  █≡≡stairs≡█  r101   █ r103  █ r105  █ r107  █ r109  █ r111  █│
 │███████████████████████████████████████████████████████████████████████│
-╰─────────────────── seed 7: start r131, battery 70% ───────────────────╯
+╰────────── seed 1: start lab_a, charger c_111, battery 100% ───────────╯
 ╭─────────────────────────────── Status ────────────────────────────────╮
-│ tick    9                                                             │
-│ battery ████████████░░░░░░░░  59%                                     │
-│ order   parcel #1: r131 → c_115                                       │
+│ tick    5                                                             │
+│ battery ███████████████████░  94%                                     │
+│ order   parcel #1: c_101 → r111                                       │
 │ holding parcel #1                                                     │
 │ node    lab_b                                                         │
+│ plan    r111                                                          │
 │ tree    Reach the delivery point › To the delivery point › move       │
 │         forward                                                       │
 │                                                                       │
-│ c_129 -> lab_d (63%)                                                  │
-│ pushes the door lab_d|lab_a                                           │
-│ lab_d -> lab_a (61%)                                                  │
-│ lab_a -> lab_b (59%)                                                  │
+│ c_105 -> c_107 (96%)                                                  │
+│ obstacle on c_107|c_109: replanning                                   │
+│ cannot pull: uses the key on the door c_107|lab_b                     │
+│ c_107 -> lab_b (94%)                                                  │
 │                                                                       │
 │  @ robot   A pick-up   B delivery   + charger   ▒ closed door   ░     │
 │ open door   X obstacle                                                │
@@ -98,6 +102,21 @@ random across the whole map.
 The map needs a terminal at least 73 columns wide. With at least 126 columns
 the status panel appears next to the map; in a short terminal the essential
 information moves into the map's border.
+
+## How a simulation runs
+
+1. **Scenario.** `robot` or `robot-tui` reads the options and builds the
+   world from the seed: start node, charger, the orders (A and B of each one)
+   and the hidden obstacles. The robot starts at 100%.
+2. **Tick loop.** At every tick the robot recomputes its energy plan for the
+   current order, then the behavior tree is ticked once. Every action does one
+   step (one edge, one door, 10% of charge) and returns `RUNNING`, so the tree
+   reacts on the next tick to a low battery or a new obstacle.
+3. **The tree**, left to right: *Battery* (charge now if the plan says so),
+   *Orders* (take or wait for an order), *Pick-up* (go to A), *Take* the item,
+   *Delivery* (go to B), *Put down* and *Close* the order.
+4. **End.** The run stops when every order is closed, when the battery is flat
+   away from the charger, or at the tick limit, and prints a summary.
 
 ## The behavior tree
 
