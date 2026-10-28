@@ -37,6 +37,7 @@ scale/scalini = stairs, libero = free, larghezza/altezza = width/height,
 etichetta = label, corridoio = corridor, stanza = room, caricabatterie = charger.
 """
 from collections import deque
+import math
 
 # Grid size in cells (columns, rows).
 LARGHEZZA, ALTEZZA = 71, 28
@@ -58,8 +59,8 @@ CELLE = {
     # North corridor (east to west).
     "c_119": (53, 6), "c_121": (45, 6), "c_123": (37, 6), "c_125": (29, 6),
     "c_127": (21, 6), "c_129": (13, 6), "c_north_west": (5, 6),
-    # West corridor: the charging station is a node of its own.
-    "charger": (5, 14),
+    # West corridor (between the north-west and south-west corners).
+    "c_west": (5, 14),
     # Rooms: one node in the middle of each room.
     "r131": (5, 3), "r129": (13, 3), "r127": (21, 3), "r125": (29, 3),
     "r123": (37, 3), "r121": (45, 3), "r119": (53, 3),
@@ -84,6 +85,11 @@ NODI = {n: (c, r * 2) for n, (c, r) in CELLE.items()}
 SCALE = (15, 50)
 DISTANZA_SICUREZZA_SCALE = 7.0
 
+# Nodes where the robot may stop: every node except those too close to the
+# stairs (it can drive past "c_stairs", but must not stand there). Random start,
+# charger, pickup and delivery points are drawn from these.
+NODI_SICURI = [n for n, p in NODI.items() if math.dist(p, SCALE) >= DISTANZA_SICUREZZA_SCALE]
+
 # Edges of the graph: (node, node, verso).
 # * verso = None  -> plain passage, no door (corridor segments, the open gap
 #   between lab A and lab B).
@@ -104,7 +110,7 @@ ARCHI = [
     ("c_north_east", "c_119", None), ("c_119", "c_121", None), ("c_121", "c_123", None),
     ("c_123", "c_125", None), ("c_125", "c_127", None), ("c_127", "c_129", None),
     ("c_129", "c_north_west", None),
-    ("c_north_west", "charger", None), ("charger", "c_south_west", None),
+    ("c_north_west", "c_west", None), ("c_west", "c_south_west", None),
     # Rooms: every room door swings inwards (towards the room), so the robot
     # pushes to get in and needs the key to get out.
     ("c_south_west", "main_office", "main_office"), ("c_101", "r101", "r101"),

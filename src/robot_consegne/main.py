@@ -99,6 +99,7 @@ def simula(mondo, max_tick=5000, mostra_stato=False, dopo_tick=None):
     albero = crea_albero(mondo)
     albero.setup()   # py_trees: lets behaviours initialise themselves (no-op for ours)
     while not mondo.finito() and mondo.tick < max_tick and (mondo.batteria > 0 or mondo.al_caricabatterie()):
+        mondo.aggiorna_piano()   # energy plan for this tick (logged when it changes)
         albero.tick()
         if mostra_stato:
             print(py_trees.display.unicode_tree(albero.root, show_only_visited=True, show_status=True))
@@ -115,32 +116,31 @@ def opzioni_scenario(ap):
     --ostacoli   number of hidden obstacles placed in the corridors
     --seed       random seed; omit it for a random scenario (the seed is printed
                  so that an interesting run can be replayed exactly)
-    --batteria   initial charge in %; omit it for randint(1, 100)
+    --batteria   initial charge in % (default 100: the robot starts fully charged)
     --max-tick   safety limit on the number of ticks
     """
     ap.add_argument("--ordini", type=int, default=1)
     ap.add_argument("--ostacoli", type=int, default=2, help="hidden obstacles in the corridors")
     ap.add_argument("--seed", type=int, help="default: random (it is printed)")
-    ap.add_argument("--batteria", type=float, help="initial charge in %% (default: randint 1-100)")
+    ap.add_argument("--batteria", type=float, default=100.0, help="initial charge in %% (default 100)")
     ap.add_argument("--max-tick", type=int, default=5000)
 
 
 def crea_scenario(args, verboso=False):
-    """Create the world from the parsed options: random start, orders, obstacles, battery.
+    """Create the world from the parsed options: random start, charger, orders, obstacles.
 
     Everything random is derived from a single seed, so the same ``--seed``
     reproduces the same run. Returns ``(mondo, header)`` where ``header`` is a
-    one-line description (seed, start node, battery) to show to the user.
+    one-line description (seed, start node, charger, battery) to show to the user.
     ``verboso=True`` makes the world print every event as it happens (main.py);
     tui.py passes False and shows events in its own panel.
     """
     seed = args.seed if args.seed is not None else random.randrange(1_000_000)
-    partenza, batteria = genera_partenza(seed)
-    if args.batteria is not None:
-        batteria = args.batteria   # explicit --batteria overrides the random value
-    mondo = Mondo(genera_ordini(args.ordini, seed), genera_ostacoli(args.ostacoli, seed),
-                  batteria=batteria, posizione=partenza, verboso=verboso)
-    return mondo, f"seed {seed}: start {partenza}, battery {batteria:.0f}%"
+    ostacoli = genera_ostacoli(args.ostacoli, seed)
+    partenza, caricatore = genera_partenza(seed)
+    mondo = Mondo(genera_ordini(args.ordini, seed), ostacoli, batteria=args.batteria,
+                  posizione=partenza, caricatore=caricatore, verboso=verboso)
+    return mondo, f"seed {seed}: start {partenza}, charger {caricatore}, battery {args.batteria:.0f}%"
 
 
 def riepilogo(mondo, ordini):

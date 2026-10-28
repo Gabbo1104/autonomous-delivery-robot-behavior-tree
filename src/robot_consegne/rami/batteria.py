@@ -1,9 +1,9 @@
-"""Battery branch: if the charge is low, go to the charger and charge up to 100%.
+"""Battery branch: if the energy plan needs a recharge now, go to the charger and charge up to 100%.
 
 Structure (as in the drawing)::
 
     ? Battery
-    ├── C  charge > 20% (beyond the way back) and not charging?   -> enough charge: SUCCESS, carry on
+    ├── C  enough charge for the plan and not charging?   -> SUCCESS, carry on
     └── -> Recharge
         ├── ? Reach the charger
         │   ├── C  am I at the charger?
@@ -13,6 +13,10 @@ Structure (as in the drawing)::
 Because the root is a Sequence and this is its first child, while this branch
 returns RUNNING nothing else in the tree is ticked: the robot "drops" whatever
 it was doing (keeping the item in hand, if any) and resumes once charged.
+
+The plan (Mondo.calcola_piano) decides in advance where the recharge goes: if
+the charge is not enough for pickup + delivery, the robot charges before the
+pickup or between pickup and delivery, whichever route is shorter.
 """
 from py_trees.common import Status
 
@@ -24,14 +28,14 @@ def crea_batteria(mondo):
     # One automatic step towards the charger per tick (doors and obstacles are
     # handled inside Mondo.vai_verso). RUNNING while moving, FAILURE if stuck.
     vai_in_carica = Azione("go to charge",
-                           lambda: esito(mondo.vai_verso("charger"), Status.RUNNING))
+                           lambda: esito(mondo.vai_verso(mondo.caricatore), Status.RUNNING))
     # "complete the action only when it reaches 100%": RUNNING until full
     carica = Azione("charge", lambda: esito(mondo.ricarica(), Status.SUCCESS, Status.RUNNING))
     return selettore(
         "Battery",
-        # The threshold logic lives in Mondo.batteria_ok (20% reserve on top of
-        # the energy needed to get back to the charger).
-        Condizione("charge > 20% (beyond the way back) and not charging?", mondo.batteria_ok),
+        # The planning logic lives in Mondo.calcola_piano (RISERVA % left after
+        # every leg plus the way to the charger).
+        Condizione("enough charge for the plan and not charging?", mondo.batteria_ok),
         sequenza(
             "Recharge",
             selettore("Reach the charger",

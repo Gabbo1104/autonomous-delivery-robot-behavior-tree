@@ -43,7 +43,7 @@ def test_stanze_chiuse_se_le_porte_sono_chiuse():
     """With all doors closed, no room can reach the corridor, while every corridor node can."""
     corridoio = mappa.CELLE["c_103"]
     for nodo, cella in mappa.CELLE.items():
-        stanza = not nodo.startswith("c_") and nodo != "charger"
+        stanza = not nodo.startswith("c_")
         assert (mappa.percorso_griglia(cella, corridoio) is None) == stanza, nodo
 
 

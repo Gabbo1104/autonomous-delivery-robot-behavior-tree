@@ -55,8 +55,8 @@
 <rect x="87.0" y="212.0" width="120.0" height="52.0" rx="0" fill="#ffedd5" stroke="#c2410c" stroke-width="1"/>
 <text x="147.0" y="238.0" text-anchor="middle" dominant-baseline="central" fill="#7c2d12" font-weight="bold">? Battery</text>
 <rect x="20.0" y="308.0" width="120.0" height="52.0" rx="8" fill="#dcfce7" stroke="#15803d" stroke-width="1"/>
-<text x="80.0" y="326.8" text-anchor="middle" dominant-baseline="central" fill="#14532d">C · battery &gt; 20%</text>
-<text x="80.0" y="341.2" text-anchor="middle" dominant-baseline="central" fill="#14532d">and not charging</text>
+<text x="80.0" y="326.8" text-anchor="middle" dominant-baseline="central" fill="#14532d">C · enough charge</text>
+<text x="80.0" y="341.2" text-anchor="middle" dominant-baseline="central" fill="#14532d">for the plan?</text>
 <rect x="154.0" y="308.0" width="120.0" height="52.0" rx="0" fill="#dbeafe" stroke="#1d4ed8" stroke-width="1"/>
 <text x="214.0" y="334.0" text-anchor="middle" dominant-baseline="central" fill="#1e3a8a" font-weight="bold" font-size="22">→</text>
 <rect x="87.0" y="404.0" width="120.0" height="52.0" rx="0" fill="#ffedd5" stroke="#c2410c" stroke-width="1"/>

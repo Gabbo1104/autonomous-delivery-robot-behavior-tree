@@ -123,7 +123,7 @@ class Vista:
         for e, (c, r) in mappa.CELLE_PORTE.items():
             aperta = e in m.porte_aperte or (c, r) == self.porta_in_transito
             g[r][c] = ("░", STILE["porta_aperta"]) if aperta else ("▒", STILE["porta_chiusa"])
-        c, r = mappa.CELLE["charger"]
+        c, r = mappa.CELLE[m.caricatore]
         g[r][c] = ("+", STILE["carica"])
         # Obstacles: faint "x" while still unknown to the robot, red "X" once discovered.
         for e, (c, r) in self.ostacoli.items():
@@ -195,6 +195,7 @@ class Vista:
                     f"none ({len(m.completati)}/{self.ordini} completed)")
         tab.add_row("holding", m.oggetto_in_mano or "-")
         tab.add_row("node", m.posizione)
+        tab.add_row("plan", m.testo_piano(m.piano) or "-")
         tab.add_row("tree", Text(self._ramo_attivo(), "cyan"))
         legenda = Text()
         for simbolo, nome, stile in LEGENDA:
@@ -262,7 +263,7 @@ def main():
     # Side by side needs the map plus a 52-column status panel and a 1-column gap;
     # otherwise use the stacked layout if there are enough rows, else compact.
     affiancati = console.width >= LARGHEZZA_MINIMA + 53
-    compatta = not affiancati and console.height < mappa.ALTEZZA + 2 + 17
+    compatta = not affiancati and console.height < mappa.ALTEZZA + 2 + 18
     vista = Vista(mondo, intestazione, args.ordini, affiancati, compatta)
     try:
         # auto_refresh=False: the screen is redrawn only when we call update(),

@@ -86,13 +86,14 @@ On the first run uv creates the environment and installs the dependencies
 Options shared by `robot` and `robot-tui`:
 
 - `--seed N` replays a simulation exactly (the seed is printed at startup);
-- `--batteria N` sets the initial charge (default: random between 1 and 100);
+- `--batteria N` sets the initial charge (default 100: the robot always starts
+  fully charged);
 - `--ordini N` number of deliveries (default 1);
 - `--ostacoli N` hidden obstacles in the corridors (default 2);
 - `--velocita N` `robot-tui` only: cells per second (default 12).
 
-The starting point, pick-up point and delivery point are random across the
-whole map.
+The starting point, the charger, the pick-up point and the delivery point are
+random across the whole map.
 
 The map needs a terminal at least 73 columns wide. With at least 126 columns
 the status panel appears next to the map; in a short terminal the essential
@@ -120,9 +121,20 @@ delivery straight away.
   Doors close again after the robot passes through.
 - **Hidden obstacles.** The robot only sees them when it reaches them; it
   remembers them and replans its route.
-- **Battery.** Moving and opening doors uses charge. The robot goes to recharge
-  when it would have less than 20% left after returning to the charger, and it
-  charges up to 100%.
+- **Random points.** The start, the charger, the pick-up point A and the
+  delivery point B are random safe nodes of the map (never next to the stairs).
+  The robot is told where the charger is and, with each order, where A and B
+  are.
+- **Battery and energy plan.** Moving and opening doors uses charge. For the
+  current order the robot plans in advance whether it can go straight
+  A → B: before every leg it must still have 20% left after the leg plus the
+  way from its end to the charger. If that is not possible it picks the shorter
+  of "charge first, then A → B" and "A, charge, then B". It never stops to
+  charge when it does not need to, and it always charges up to 100%. The plan
+  is recomputed every tick, so a discovered obstacle can move the recharge
+  earlier; it appears in the log (`plan: ...`) and in the status panel.
+- **Starting charge.** The robot always starts at 100% (`--batteria` changes
+  it, e.g. to watch it plan a recharge).
 
 ## Project structure
 

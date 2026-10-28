@@ -23,6 +23,13 @@ Battery model: moving costs CONSUMO_PER_METRO % per metre, opening a door costs
 CONSUMO_PORTA %, charging gives RICARICA_PER_TICK % per tick. Change these
 constants to make the robot more or less autonomous.
 
+Energy plan: the robot knows where the charger (``caricatore``) is and, for the
+current order, plans in advance whether and where to stop for a recharge
+(``piano``): straight to pickup and delivery if the charge is enough, otherwise
+the shortest route that puts the charger before the pickup or between pickup
+and delivery. The plan is recomputed every tick, so a discovered obstacle that
+makes a leg longer can move the recharge earlier.
+
 Glossary of Italian names: mondo = world, ordine = order, ritiro = pickup,
 consegna = delivery, arrivo = arrival time, oggetto = item, batteria = battery,
 in carica = charging, posizione = position, porta = door, aperta = open,
@@ -40,6 +47,7 @@ from robot_consegne.percorso import costruisci_grafo, distanza, lunghezza, perco
 CONSUMO_PER_METRO = 0.1     # % per metre: with a 20% reserve the robot can drive a full lap (~180 m)
 CONSUMO_PORTA = 0.5         # % to open a door
 RICARICA_PER_TICK = 10.0    # % recovered per tick while on the charger
+RISERVA = 20.0              # % that must be left after every leg plus the way to the charger
 # Item names used for generated orders (cycled; a "#n" suffix keeps them unique).
 OGGETTI = ["parcel", "book", "usb stick", "coffee", "documents", "tools", "sample", "cable"]
 
@@ -57,7 +65,8 @@ class Ordine:
 def genera_ordini(n, seed=None):
     """Create ``n`` orders with random pickup and delivery nodes (always different).
 
-    Any node of the map can be a pickup/delivery point, corridors included.
+    Any safe node of the map (mappa.NODI_SICURI) can be a pickup/delivery
+    point, corridors included.
     Orders arrive at increasing ticks (0 to 30 ticks apart), so with several
     orders the robot sometimes has to wait ("wait for an order").
     The same ``seed`` always produces the same orders (reproducible runs).
@@ -65,7 +74,7 @@ def genera_ordini(n, seed=None):
     rng = random.Random(seed)
     ordini, arrivo = [], 0
     for i in range(n):
-        ritiro, consegna = rng.sample(list(mappa.NODI), 2)   # sample() never returns the same node twice
+        ritiro, consegna = rng.sample(mappa.NODI_SICURI, 2)   # sample() never returns the same node twice
         ordini.append(Ordine(i + 1, f"{OGGETTI[i % len(OGGETTI)]} #{i + 1}", ritiro, consegna, arrivo))
         arrivo += rng.randint(0, 30)
     return ordini
@@ -98,9 +107,13 @@ def genera_ostacoli(n, seed=None):
 
 
 def genera_partenza(seed=None):
-    """Random starting node (anywhere on the map) and initial battery ``randint(1, 100)``."""
+    """Random start node and charger node: ``(partenza, caricatore)``.
+
+    Both are any safe nodes (they may coincide). The robot always starts with
+    a full battery (Mondo's default).
+    """
     rng = random.Random(seed)
-    return rng.choice(list(mappa.NODI)), rng.randint(1, 100)
+    return rng.choice(mappa.NODI_SICURI), rng.choice(mappa.NODI_SICURI)
 
 
 def arco(a, b):
@@ -124,9 +137,12 @@ class Mondo:
     Status values (SUCCESS / FAILURE / RUNNING).
     """
 
-    def __init__(self, ordini=(), ostacoli=(), batteria=100.0, posizione=mappa.PARTENZA, verboso=False):
+    def __init__(self, ordini=(), ostacoli=(), batteria=100.0, posizione=mappa.PARTENZA, *,
+                 caricatore, verboso=False):
         # --- robot -----------------------------------------------------------
         self.posizione = posizione      # current node
+        self.caricatore = caricatore    # node of the charging station (random, see genera_partenza; known to the robot)
+        self.piano = []                 # planned stops of the current order, see aggiorna_piano
         self.batteria = float(batteria)  # charge in %, 0..100
         self.in_carica = False          # True from the first charging tick until 100% (see ricarica)
         self.tick = 0                   # advanced by main.simula after each tree tick
@@ -199,34 +215,93 @@ class Mondo:
         self.porte_aperte.discard(e)   # doors close again once the robot has gone through
         return True
 
-    # --- perception (used by the Condition leaves) ---------------------------
-    def costo_ritorno(self):
-        """Estimated % of battery needed to reach the charger from here.
+    # --- energy plan -----------------------------------------------------------
+    def costo(self, da, a):
+        """Estimated % of battery needed to go from node ``da`` to node ``a``.
 
         Uses the shortest route that avoids the known obstacles, counting both
         the distance and every door on the way. Returns 100 (i.e. "impossible")
-        if the charger is currently unreachable.
+        if ``a`` is currently unreachable.
         """
-        p = percorso(mappa.NODI, mappa.ARCHI, self.posizione, "charger",
-                     bloccati=[tuple(e) for e in self.bloccati_noti])
-        porte = sum(arco(a, b) in self.porte for a, b in zip(p, p[1:])) if p else 0
+        p = percorso(mappa.NODI, mappa.ARCHI, da, a, bloccati=[tuple(e) for e in self.bloccati_noti])
+        porte = sum(arco(x, y) in self.porte for x, y in zip(p, p[1:])) if p else 0
         return (lunghezza(mappa.NODI, p) * CONSUMO_PER_METRO + porte * CONSUMO_PORTA) if p else 100.0
 
-    def batteria_ok(self):
-        """Battery condition of the tree: more than 20% LEFT OVER after getting back to the charger.
+    def tappe(self):
+        """Stops still needed by the current order: pickup and delivery, or just delivery."""
+        o = self.ordine
+        if o is None:
+            return []
+        return [o.consegna] if self.oggetto_in_mano == o.oggetto else [o.ritiro, o.consegna]
 
-        The original drawing says "> 20%". A fixed 20% left the robot stranded
-        in 2-14% of runs when hidden obstacles forced long detours, so the
-        reserve is now counted on top of the cost of the way back: the further
-        the robot is from the charger, the earlier it goes to recharge.
-        While charging (``in_carica``) this stays False, so the robot keeps
-        charging until 100% instead of leaving at 21%.
+    def calcola_piano(self):
+        """Best list of stops for the current order, with the charger inserted where needed.
+
+        Candidates: no recharge, or a recharge before stop 0, 1, ... (one
+        recharge is always enough: a full battery covers the whole map several
+        times). A plan is feasible if, before every leg, the charge minus the
+        leg minus the way from its end to the charger leaves at least RISERVA.
+        If the plan without recharge is feasible it is always chosen (the robot
+        never stops to charge when it does not need to); otherwise the feasible
+        recharge plan with the least energy wins. If none is feasible the robot
+        goes to charge now.
         """
-        return self.batteria - self.costo_ritorno() > 20 and not self.in_carica
+        tappe, c = self.tappe(), self.caricatore
+        migliore, spesa_migliore = [c] + tappe, None
+        for ricarica in [None, *range(len(tappe))]:   # index of the recharge stop, None = no recharge
+            piano = tappe if ricarica is None else tappe[:ricarica] + [c] + tappe[ricarica:]
+            pos, carica, spesa = self.posizione, self.batteria, 0.0
+            if not piano and carica - self.costo(pos, c) < RISERVA:
+                continue   # idle: only "keep enough charge to get back" counts
+            for i, tappa in enumerate(piano):
+                tratto = self.costo(pos, tappa)
+                if i == ricarica:
+                    carica = 100.0
+                elif carica - tratto - self.costo(tappa, c) < RISERVA:
+                    break
+                else:
+                    carica -= tratto
+                spesa += tratto
+                pos = tappa
+            else:
+                if ricarica is None:
+                    return piano
+                if spesa_migliore is None or spesa < spesa_migliore:
+                    migliore, spesa_migliore = piano, spesa
+        return migliore
+
+    def aggiorna_piano(self):
+        """Store the current plan (shown by the terminal view) and log it when it changes.
+
+        Called by main.simula before every tick. A plan that only lost the stop
+        just reached is not logged again.
+        """
+        nuovo = self.calcola_piano()
+        if nuovo != self.piano and nuovo != self.piano[1:]:
+            self.registra("plan: " + self.testo_piano([self.posizione] + nuovo))
+        self.piano = nuovo
+
+    @staticmethod
+    def testo_piano(nodi):
+        """Stops joined by arrows, merging repeats (charger on the pickup or delivery node)."""
+        return " → ".join(n for i, n in enumerate(nodi) if i == 0 or n != nodi[i - 1])
+
+    # --- perception (used by the Condition leaves) ---------------------------
+    def batteria_ok(self):
+        """Battery condition of the tree: is the charge enough to follow the plan without charging now?
+
+        The plan (calcola_piano) is recomputed on every call. It is False when
+        the plan starts with a recharge (with no order: when less than RISERVA
+        would be left after getting back to the charger). While charging
+        (``in_carica``) this stays False, so the robot keeps charging until 100%
+        instead of leaving as soon as the plan allows it.
+        """
+        ricarica_ora = self.calcola_piano() == [self.caricatore] + self.tappe()   # recharge before anything else
+        return not self.in_carica and not ricarica_ora
 
     def al_caricabatterie(self):
         """True if the robot is on the charging station node."""
-        return self.posizione == "charger"
+        return self.posizione == self.caricatore
 
     def lontano_dalle_scale(self):
         """True if the robot is at a safe distance from the open staircase."""
@@ -314,7 +389,14 @@ class Mondo:
         node. If the next node towards the target is among them it is preferred
         (so the robot keeps making progress); otherwise it takes the candidate
         furthest from the stairs. Returns False if there is nowhere to go.
+
+        An obstacle right in front (on the way to the target) is seen and
+        remembered first. Without this the robot stepped back, planned the same
+        route again and went back and forth next to the stairs forever.
         """
+        _, e = self._arco_davanti(destinazione)
+        if e in self.ostacoli:
+            self.torna_indietro(destinazione)
         qui = distanza(mappa.NODI[self.posizione], mappa.SCALE)
         candidati = [n for n in self.grafo[self.posizione]
                      if arco(self.posizione, n) not in self.porte

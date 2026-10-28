@@ -4,12 +4,15 @@ Frames are rendered into a string with rich's Console.capture(); the rich Live
 display is replaced by a fake object so the animation can run instantly
 (time.sleep is patched out) while recording every robot position.
 """
+import pytest
 from rich.console import Console
 
 from robot_consegne import mappa
 from robot_consegne import tui
 from robot_consegne.main import simula
-from robot_consegne.mondo import Mondo, Ordine
+from robot_consegne.mondo import Mondo, Ordine, genera_partenza
+
+SEMI = range(5)   # random chargers, drawn as in a simulation started by the user
 
 
 def schermata(vista, larghezza=130):
@@ -20,9 +23,11 @@ def schermata(vista, larghezza=130):
     return cattura.get()
 
 
-def test_disegna_robot_ritiro_consegna_e_porte():
+@pytest.mark.parametrize("seed", SEMI)
+def test_disegna_robot_ritiro_consegna_e_porte(seed):
     """A frame shows robot, pickup and delivery markers, the order, and every door closed at start."""
-    m = Mondo([Ordine(1, "pacco", "r131", "r111")], posizione="c_103")
+    m = Mondo([Ordine(1, "pacco", "r131", "r111")], posizione="c_103",
+              caricatore=genera_partenza(seed)[1])
     m.attendi_ordine()
     out = schermata(tui.Vista(m, "prova", 1, affiancati=True))
     assert "@" in out and "A" in out and "B" in out
@@ -39,10 +44,11 @@ class LiveFinto:
         pass
 
 
-def test_animazione_casella_per_casella_senza_attraversare_muri(monkeypatch):
+@pytest.mark.parametrize("seed", SEMI)
+def test_animazione_casella_per_casella_senza_attraversare_muri(monkeypatch, seed):
     """Recorded robot positions move one cell at a time and only ever on free cells or door cells."""
     monkeypatch.setattr(tui.time, "sleep", lambda s: None)
-    m = Mondo([Ordine(1, "pacco", "r131", "r111")], posizione="lab_a")
+    m = Mondo([Ordine(1, "pacco", "r131", "r111")], posizione="lab_a", caricatore=genera_partenza(seed)[1])
     v = tui.Vista(m, "prova", 1)
     posizioni = []
     live = LiveFinto()
@@ -56,9 +62,11 @@ def test_animazione_casella_per_casella_senza_attraversare_muri(monkeypatch):
         assert mappa.GRIGLIA[r][c] == mappa.LIBERO or (c, r) in porte
 
 
-def test_modalita_compatta_sta_in_30_righe():
+@pytest.mark.parametrize("seed", SEMI)
+def test_modalita_compatta_sta_in_30_righe(seed):
     """Compact mode fits in map height + 2 rows and 73 columns, with the status in the frame title."""
-    m = Mondo([Ordine(1, "pacco", "r131", "r111")], posizione="c_103", batteria=40)
+    m = Mondo([Ordine(1, "pacco", "r131", "r111")], posizione="c_103", batteria=40,
+              caricatore=genera_partenza(seed)[1])
     m.attendi_ordine()
     out = schermata(tui.Vista(m, "prova", 1, compatta=True), larghezza=73)
     righe = out.splitlines()
